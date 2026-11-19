@@ -1,0 +1,3057 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Neuron — redes neuronales que puedes ver aprender</title>
+<meta name="description" content="Neuron (@dniskav/neuron): redes neuronales en TypeScript puro, sin dependencias, hechas a mano para aprender.">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#09090a; --fg:#f2efe6; --mute:#8d897d; --line:rgba(255,255,255,.08);
+  --gold:#c9a227; --gold-hi:#ffe08a; --cool:#6aa7ff; --cool-dim:#3b5f9c;
+  --ease:cubic-bezier(.2,.7,.1,1);
+  --gut:16px; --hdr:56px;
+  --sans:"Inter Tight",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--fg);color-scheme:dark}
+body{font-family:var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:6px}
+
+/* grano */
+.grain{position:fixed;inset:0;z-index:50;pointer-events:none;opacity:.09;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+
+/* menú */
+header{position:fixed;top:0;left:0;right:0;z-index:40;height:var(--hdr);display:flex;align-items:center;justify-content:space-between;
+  padding:0 var(--gut);background:linear-gradient(#09090aee,#09090a00);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:13px;letter-spacing:.04em}
+.brand i{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px 2px var(--gold);animation:beat 2.4s ease-in-out infinite}
+@keyframes beat{50%{transform:scale(.7);opacity:.6}}
+.menu{display:flex;gap:2px;padding:4px;border:1px solid var(--line);border-radius:999px;background:#ffffff08}
+.menu a{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:999px;font-size:14px;color:var(--mute);transition:color .3s,background .3s}
+.menu a .n{font-family:var(--mono);font-size:10px;opacity:.6}
+.menu a:hover{color:var(--fg)}
+.menu a[aria-current="true"]{color:#14110a;background:linear-gradient(135deg,var(--gold-hi),var(--gold));box-shadow:0 0 18px -2px #c9a22788}
+.menu a[aria-current="true"] .n{opacity:.7}
+.dots{position:fixed;right:18px;top:50%;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:14px}
+.dots a{display:block;width:8px;height:8px;border-radius:50%;background:#ffffff2e;transition:all .4s var(--ease)}
+.dots a[aria-current="true"]{background:var(--gold);box-shadow:0 0 12px 2px #c9a22799;transform:scale(1.4)}
+
+/* pantallas */
+main{height:100vh;height:100dvh;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;scroll-behavior:smooth;scrollbar-width:none}
+main::-webkit-scrollbar{display:none}
+section{position:relative;height:100vh;height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(var(--hdr) + 8px) var(--gut) 24px;text-align:center}
+section::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(60% 50% at 50% 38%,#c9a22724,transparent 70%),radial-gradient(45% 40% at 85% 90%,#6aa7ff14,transparent 70%)}
+section>*{position:relative;z-index:1}
+section>canvas.bg{position:absolute;z-index:0;inset:0;width:100%;height:100%}
+
+.rv{opacity:0;transform:translateY(30px);filter:blur(8px);
+  transition:opacity 1s var(--ease) calc(var(--d,0)*110ms),transform 1s var(--ease) calc(var(--d,0)*110ms),filter 1s var(--ease) calc(var(--d,0)*110ms)}
+section.in .rv{opacity:1;transform:none;filter:none}
+
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+h2{font-size:clamp(34px,6vw,72px);font-weight:600;letter-spacing:-.035em;line-height:1.02;
+  background:linear-gradient(180deg,#fff,#b9b4a4);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{font-size:clamp(16px,2vw,21px);color:var(--mute);max-width:36ch;line-height:1.45;margin-top:14px}
+
+/* 1 portada */
+.vig{position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(55% 45% at 50% 48%,#09090acc,transparent 75%)}
+#inicio h1{font-size:clamp(68px,21vw,250px);font-weight:600;line-height:.95;padding:0 .04em .08em;letter-spacing:.12em;
+  background:linear-gradient(100deg,#8a6d12 0%,var(--gold) 20%,var(--gold-hi) 45%,#fff 52%,var(--gold-hi) 58%,var(--gold) 80%,#8a6d12 100%);background-size:220% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 40px #c9a22744);
+  transition:opacity 1.4s var(--ease),transform 1.4s var(--ease),letter-spacing 1.8s var(--ease),filter 1.4s var(--ease);animation:shine 7s linear infinite}
+#inicio.in h1{letter-spacing:-.055em;filter:drop-shadow(0 0 40px #c9a22744)}
+#inicio:not(.in) h1{filter:blur(12px)}
+@keyframes shine{from{background-position:120% 0}to{background-position:-100% 0}}
+#inicio .sub{font-size:clamp(17px,2.4vw,26px);max-width:30ch;color:#c4bfae;margin-top:22px}
+.pill{margin-top:30px;display:inline-flex;align-items:center;gap:10px;padding:9px 16px;border:1px solid var(--line);border-radius:999px;background:#ffffff08;font-family:var(--mono);font-size:12.5px;color:var(--mute);backdrop-filter:blur(6px)}
+.pill b{color:var(--gold);font-weight:500}
+.scroll{position:absolute!important;bottom:22px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+.scroll span.bar{width:1px;height:34px;background:linear-gradient(var(--gold),transparent);transform-origin:top;animation:drip 2s var(--ease) infinite}
+@keyframes drip{0%{transform:scaleY(0)}50%{transform:scaleY(1)}100%{transform:scaleY(1);opacity:0}}
+
+/* 2 neurona */
+#neurona{justify-content:center}
+.nwrap{display:grid;grid-template-columns:1fr;gap:10px;width:100%;max-width:1180px;align-items:center;text-align:left}
+.ncv{position:relative;width:100%;aspect-ratio:640/420;max-height:38dvh;margin:0 auto}
+.ncv canvas{width:100%;height:100%;display:block;cursor:pointer;touch-action:manipulation}
+.hint{display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--mono);font-size:11.5px;color:var(--mute);margin-top:4px}
+.hint i{width:7px;height:7px;border-radius:50%;background:var(--cool);box-shadow:0 0 10px var(--cool);animation:beat 1.8s infinite}
+.ntext h2{font-size:clamp(28px,4.6vw,56px)}
+.steps{list-style:none;margin-top:14px;display:grid;gap:8px}
+.steps li{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#ffffff05;
+  transition:border-color .5s,background .5s,box-shadow .5s,transform .5s var(--ease)}
+.steps .num{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-size:13px;color:var(--mute);border:1px solid var(--line);transition:all .5s}
+.steps h3{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.steps p{font-size:14px;color:var(--mute);line-height:1.35}
+.steps li.on{border-color:#c9a22799;background:#c9a2270f;box-shadow:0 0 30px -10px #c9a227aa;transform:translateX(4px)}
+.steps li.on .num{background:var(--gold);color:#14110a;border-color:var(--gold);box-shadow:0 0 16px #c9a227aa}
+.closing{margin-top:14px;font-size:clamp(15px,1.7vw,19px);line-height:1.45;color:#d6d1c0}
+.closing b{color:var(--gold-hi);font-weight:600}
+@media (min-width:900px){
+  .nwrap{grid-template-columns:1.25fr 1fr;gap:48px}
+  .ncv{max-height:none;aspect-ratio:640/420}
+  .steps p{font-size:15px}
+}
+@media (max-height:720px){.steps p{display:none}.steps li{padding:7px 10px}.closing{margin-top:8px}}
+
+/* 2b enséñale */
+#ensenale,#equipo{justify-content:flex-start;padding-top:calc(var(--hdr) + 6px);padding-bottom:16px}
+#ensenale .ehead h2,#equipo .ehead h2{font-size:clamp(28px,4vw,46px);margin-top:6px}
+#ensenale .ehead .sub,#equipo .ehead .sub{max-width:none;margin-top:6px;font-size:clamp(14px,1.5vw,17px)}
+.elab{flex:1;min-height:0;width:100%;max-width:1240px;display:grid;grid-template-columns:268px minmax(0,1fr) 276px;gap:28px;align-items:stretch;margin-top:12px;text-align:left}
+.elab>div{min-width:0;min-height:0}
+.esets,.emid,.eside{display:flex;flex-direction:column}
+.elabel{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin-bottom:8px}
+.slist{display:grid;gap:6px;align-content:start}
+.set{display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:10px;padding:7px 12px;border:1px solid var(--line);border-radius:14px;background:#ffffff05;text-align:left;
+  transition:border-color .4s,background .4s,box-shadow .4s,transform .4s var(--ease)}
+.set:hover{border-color:#ffffff24;background:#ffffff0a}
+.set .k{display:flex;flex-direction:column;line-height:1}
+.set .k b{font-size:24px;font-weight:600;letter-spacing:-.02em}
+.set .k small{font-family:var(--mono);font-size:9.5px;color:var(--mute);margin-top:3px}
+.set .cd{display:flex;flex-wrap:wrap;gap:3px;align-content:center}
+.set .cd i{width:8px;height:8px;border-radius:50%;box-shadow:0 0 0 1px #ffffff47}
+.set .res{font-family:var(--mono);font-size:11px;color:var(--mute);min-width:34px;text-align:right}
+.set.on{border-color:#c9a22799;background:#c9a2270f;box-shadow:0 0 30px -10px #c9a227aa;transform:translateX(4px)}
+.set.on .res{color:var(--gold-hi)}
+.e0{margin-top:10px;padding:10px 14px;border:1px dashed #6aa7ff66;border-radius:999px;background:#6aa7ff10;color:var(--cool);font-size:14px;transition:background .3s,border-color .3s}
+.e0:hover{background:#6aa7ff22;border-color:var(--cool)}
+.e0.on{background:#6aa7ff26;border-style:solid;border-color:var(--cool)}
+.enote{margin-top:auto;padding-top:10px;font-family:var(--mono);font-size:10.5px;line-height:1.5;color:var(--mute)}
+.enote b{color:var(--gold);font-weight:500}
+.ecv{position:relative;flex:1;min-height:0;width:100%}
+.ecv canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.eleg{margin-top:6px;text-align:center;font-family:var(--mono);font-size:10.5px;line-height:1.5;color:var(--mute)}
+.eleg b{color:var(--fg);font-weight:500}
+.eleg i{font-style:normal;color:var(--cool)}
+.eleg span{transition:opacity .3s}
+.eleg.m-learn #lg-e,.eleg.m-exam #lg-a{opacity:.35}
+.cbtn{position:absolute;top:0;right:0;z-index:5;display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:#ffffff0a;color:var(--mute);backdrop-filter:blur(6px);transition:color .3s,border-color .3s,background .3s}
+.cbtn:hover,.cbtn[aria-expanded="true"]{color:var(--gold-hi);border-color:#c9a22799;background:#c9a2271a}
+.cpanel{position:absolute;z-index:6;top:42px;right:0;width:min(560px,calc(100vw - 2 * var(--gut)));max-width:100%;max-height:min(62vh,440px);overflow:auto;border:1px solid #c9a22755;border-radius:14px;background:#0d0d10fa;box-shadow:0 24px 60px -20px #000,0 0 40px -18px #c9a227aa;
+  transform-origin:top right;opacity:0;transform:translateY(-8px) scale(.97);visibility:hidden;transition:opacity .28s var(--ease),transform .28s var(--ease),visibility 0s linear .28s}
+.cpanel[hidden]{display:block}
+.cpanel.open{opacity:1;transform:none;visibility:visible;transition:opacity .28s var(--ease),transform .28s var(--ease),visibility 0s}
+.cpanel:focus{outline:none}
+.cpanel:focus-visible{outline:2px solid var(--gold)}
+.ccopy{position:sticky;top:6px;float:right;margin:6px 6px 0 0;display:grid;place-items:center;width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:#16161a;color:var(--mute);z-index:2}
+.ccopy:hover{color:var(--fg);border-color:#ffffff30}
+.ccopy .i-ok{display:none;color:var(--cool)}
+.ccopy.done .i-ok{display:block}.ccopy.done .i-copy{display:none}
+.ccode{margin:0;padding:12px 14px;font-family:var(--mono);font-size:12px;line-height:1.7;color:#d6d1c0;white-space:pre;text-align:left;overflow-x:auto;tab-size:2}
+.ccode .ln{display:block;padding:0 8px;margin:0 -8px;border-left:2px solid transparent;border-radius:3px;transition:background .3s,border-color .3s}
+.bbtn{right:42px}
+.bpanel .ccode{padding-top:4px}
+.bhead{padding:12px 14px 4px;font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--fg);text-align:left}
+.bars{display:grid;gap:7px;padding:6px 14px 4px}
+.brow{display:grid;grid-template-columns:66px minmax(0,1fr) 92px;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px;color:var(--mute)}
+.brow .bl{color:rgb(var(--c));white-space:nowrap}
+.bt{position:relative;height:12px;border-radius:6px;background:#ffffff0a;box-shadow:inset 0 0 0 1px #ffffff14;overflow:hidden}
+.bz{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#ffffff40}
+.bb{position:absolute;top:1px;bottom:1px;left:50%;width:0;border-radius:5px;background:rgba(var(--c),.85);box-shadow:0 0 10px rgba(var(--c),.45);transition:left .45s var(--ease),width .45s var(--ease)}
+.brow.neg .bb{background:repeating-linear-gradient(90deg,rgba(var(--c),.85) 0 5px,rgba(var(--c),.25) 5px 9px)}
+.bv{text-align:right;color:var(--fg);white-space:nowrap}
+.bnote,.bcur{padding:2px 14px 0;font-size:12.5px;line-height:1.4;text-align:left}
+.bnote{color:var(--cool)}.bcur{color:#d6d1c0}
+.bnote:empty,.bcur:empty{display:none}
+.bsec{padding:10px 14px 4px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);text-align:left}
+.crows{display:grid;gap:3px;padding:0 10px}
+.crow{display:grid;grid-template-columns:70px minmax(0,1fr) 48px;align-items:center;gap:10px;padding:3px 6px;border:1px solid transparent;border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--mute);text-align:left;opacity:.45;transition:opacity .3s,border-color .3s,background .3s}
+.crow:hover{opacity:.85;background:#ffffff08}
+.crow.tried{opacity:1}
+.crow.cur{border-color:#c9a22799;background:#c9a2270f;color:var(--gold-hi)}
+.crow.sel{border-color:#6aa7ffaa;background:#6aa7ff12}
+.crow:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.crow .cp{text-align:right;color:var(--fg)}
+.cm{position:relative;height:22px;border-radius:4px;background:#ffffff08;box-shadow:inset 0 0 0 1px #ffffff12}
+.cm::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:#ffffff30}
+.cm i{position:absolute;height:4px;border-radius:2px;background:rgba(var(--c),.9)}
+.cm i.n{background:repeating-linear-gradient(90deg,rgba(var(--c),.9) 0 3px,rgba(var(--c),.25) 3px 5px)}
+.bphrase{padding:8px 14px 2px;font-size:13px;line-height:1.4;color:#d6d1c0;text-align:left}
+.bphrase:empty{display:none}
+.ccode .ln.cur{background:#6aa7ff26;border-left-color:var(--cool)}
+.ccode .sw{display:inline-block;width:11px;height:11px;margin-left:10px;border-radius:50%;vertical-align:-1px;box-shadow:0 0 0 1px #ffffff55}
+.ccode .more{width:calc(100% + 16px);text-align:left;background:none;border:0;font:inherit;color:#7d796d;font-style:italic;cursor:pointer;border-left:2px solid transparent}
+.ccode .more span{color:inherit!important}
+.ccode .more:hover{color:var(--gold-hi)}
+.ccode .more:focus-visible{outline:2px solid var(--gold);outline-offset:0}
+.ccode .ln.hl{background:#c9a22722;border-left-color:var(--gold)}
+.ccode .k{color:#e8a0c8}.ccode .s{color:#a8d98f}.ccode .c{color:#7d796d;font-style:italic}.ccode .n{color:#f0b070}.ccode .f{color:var(--gold-hi)}.ccode .t{color:var(--cool)}
+@media (max-width:899px){.brow{grid-template-columns:62px minmax(0,1fr) 84px;gap:7px}.cpanel{width:100%;max-height:min(56vh,340px)}.ccode{font-size:11px}}
+.plab{margin-top:14px;margin-bottom:6px}
+.pick{position:relative;display:flex;align-items:center;gap:12px}
+.ppop{position:absolute;z-index:8;top:46px;left:0;display:grid;grid-template-columns:repeat(8,1fr);gap:4px;padding:10px;width:min(100%,268px);border:1px solid #c9a22755;border-radius:14px;background:#0d0d10f2;box-shadow:0 24px 60px -20px #000,0 0 40px -18px #c9a227aa;
+  transform-origin:top left;opacity:0;transform:translateY(-6px) scale(.97);visibility:hidden;transition:opacity .25s var(--ease),transform .25s var(--ease),visibility 0s linear .25s}
+.ppop[hidden]{display:grid}
+.ppop.open{opacity:1;transform:none;visibility:visible;transition:opacity .25s var(--ease),transform .25s var(--ease),visibility 0s}
+.ppop button{aspect-ratio:1;border-radius:7px;box-shadow:inset 0 0 0 1px #ffffff2e;transition:transform .2s var(--ease),box-shadow .2s}
+.ppop button:hover,.ppop button:focus-visible{transform:scale(1.18);box-shadow:inset 0 0 0 1px #fff,0 0 10px #ffffff66;outline:none;z-index:1}
+.pickc{position:relative;flex:none;width:38px;height:38px;border-radius:50%;cursor:pointer;display:block;border:1px solid #ffffff40;box-shadow:0 0 16px -2px #c9a22788;transition:box-shadow .3s,transform .3s var(--ease)}
+.pickc:hover{box-shadow:0 0 22px 0 #c9a227cc;transform:scale(1.06)}
+.pickc:focus-within{outline:2px solid var(--gold);outline-offset:3px}
+.pickc input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+.pdot{position:absolute;inset:3px;border-radius:50%;background:#f5d742;box-shadow:inset 0 0 0 1px #ffffff55;pointer-events:none}
+.pq{display:flex;flex-wrap:wrap;gap:7px}
+.pq button{width:20px;height:20px;border-radius:50%;box-shadow:0 0 0 1px #ffffff55;transition:transform .25s var(--ease),box-shadow .25s}
+.pq button:hover{transform:scale(1.25);box-shadow:0 0 0 1px #fff,0 0 10px #ffffff55}
+.pq button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.estatus{min-height:1.4em;margin-top:6px;text-align:center;font-family:var(--mono);font-size:12.5px;color:var(--cool)}
+.exam{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:14px;background:#ffffff05}
+.ex{display:grid;justify-items:center;gap:3px;padding:3px 0;border-radius:8px;border:1px solid transparent;transition:border-color .3s,background .3s}
+.ex i{width:100%;max-width:24px;aspect-ratio:1;border-radius:50%;box-shadow:0 0 0 1px #ffffff47}
+.ex span{height:14px;font-size:13px;line-height:14px;font-weight:600}
+.ex.now{border-color:#c9a22799;background:#c9a22712}
+.ex.ok span{color:var(--cool)}
+.ex.bad span{color:#ff8a78}
+.exlab{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);text-align:center;margin-top:8px}
+.flask{position:relative;flex:1;min-height:170px}
+.flask canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.ephrase{min-height:4.6em;margin-top:8px;font-size:15px;line-height:1.35;color:#d6d1c0;text-align:center}
+.ephrase small{display:block;margin-top:3px;font-family:var(--mono);font-size:11px;color:var(--mute)}
+.jars{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:6px}
+.jar{display:grid;justify-items:center;gap:3px;font-family:var(--mono);font-size:9.5px;color:var(--mute)}
+.jb{position:relative;width:100%;max-width:30px;height:38px;border:1px solid #ffffff2e;border-radius:5px 5px 11px 11px;overflow:hidden;background:#ffffff06;transition:border-color .4s,box-shadow .4s}
+.jar.empty .jb{border-style:dashed;border-color:#ffffff1a}
+.jar.empty .liq{display:none}
+.liq{position:absolute;left:0;right:0;bottom:0;height:var(--h,0%);transition:height 1.1s var(--ease);
+  background:linear-gradient(180deg,#bcd8ff,#ffd766 70%,#c9a227);filter:saturate(calc(.1 + var(--q,0) * .95)) brightness(calc(.55 + var(--q,0) * .6)) contrast(calc(.8 + var(--q,0) * .2))}
+.liq::after{content:"";position:absolute;left:-30%;top:-4px;width:160%;height:8px;border-radius:50%;background:inherit;animation:slosh 3.4s ease-in-out infinite}
+@keyframes slosh{50%{transform:translateX(18%)}}
+.jar.on{color:var(--gold-hi)}
+.jar.on .jb{border-color:var(--gold);box-shadow:0 0 14px -2px #c9a227bb}
+.jar .jp{height:12px}
+.jarlab{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-top:10px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (max-height:720px) and (min-width:900px){
+  .set{padding:5px 10px}.set .k b{font-size:20px}.set .cd i{width:7px;height:7px}
+  .ephrase{font-size:14px}.estatus{margin-top:2px}.jb{height:30px}
+}
+@media (max-width:899px){
+  #ensenale,#equipo{height:auto;min-height:100vh;min-height:100dvh;overflow:visible;scroll-snap-stop:normal;padding-bottom:40px}
+  .elab{display:flex;flex-direction:column;gap:20px;max-width:640px}
+  .slist{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .set{grid-template-columns:44px 1fr;grid-template-rows:auto auto;padding:8px 10px}
+  .set .res{grid-column:1/-1;text-align:left;min-height:1em}
+  .set.on{transform:none}
+  .enote{margin-top:10px}
+  .ecv{flex:none;aspect-ratio:640/420;max-height:none}
+  .flask{flex:none;height:270px}
+  .exam{gap:2px;padding:6px}
+}
+
+/* 2c equipo */
+.qteam{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px}
+.qstep{padding:9px 12px;border:1px solid var(--line);border-radius:999px;background:#ffffff08;font-size:14px;color:var(--fg);white-space:nowrap;transition:border-color .3s,background .3s,opacity .3s}
+.qstep:hover:not(:disabled){border-color:#ffffff30;background:#ffffff12}
+.qstep:disabled{opacity:.3;cursor:default}
+.qcount{text-align:center;font-family:var(--mono);font-size:11px;line-height:1.3;color:var(--gold-hi)}
+.qgo{margin-top:10px;padding:11px 16px;border-radius:999px;font-size:15px;font-weight:600;letter-spacing:-.01em;color:#14110a;background:linear-gradient(135deg,var(--gold-hi),var(--gold));box-shadow:0 0 22px -6px #c9a227aa;transition:box-shadow .3s,transform .3s var(--ease)}
+.qgo:hover{box-shadow:0 0 30px -2px #c9a227cc;transform:translateY(-1px)}
+.qdots{display:flex;flex-wrap:wrap;gap:3px;align-content:flex-start}
+.qdots i{width:8px;height:8px;border-radius:50%;box-shadow:0 0 0 1px #ffffff47;transition:box-shadow .3s,transform .3s var(--ease)}
+.qdots i.now{box-shadow:0 0 0 2px var(--gold-hi),0 0 8px #ffe08a;transform:scale(1.35)}
+.eleg.m-learn #qlg-e,.eleg.m-exam #qlg-a{opacity:.35}
+#equipo .jars{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#equipo .jb{max-width:46px;height:54px}
+#equipo .jar .jl{font-size:11px}
+.btag{color:#d6d1c0;padding-top:0}
+.cm2{position:relative;height:22px;border-radius:4px;background:#ffffff08;box-shadow:inset 0 0 0 1px #ffffff12}
+.cm2::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:#ffffff30}
+.cm2 i{position:absolute;border-radius:1px}
+@media (max-width:899px){
+  .qteam{grid-template-columns:auto minmax(0,1fr) auto}
+  #equipo .jb{height:46px}
+}
+
+/* 3 snake */
+.frame{margin-top:26px;width:min(100%,560px);aspect-ratio:2/1;border:1px solid var(--line);border-radius:18px;padding:10px;
+  background:linear-gradient(160deg,#ffffff0a,#ffffff02);box-shadow:0 30px 80px -30px #000,0 0 60px -20px #c9a22733 inset}
+.frame canvas{width:100%;height:100%;display:block;border-radius:10px}
+.soon{margin-top:18px;display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;color:var(--cool);padding:7px 14px;border:1px solid #6aa7ff44;border-radius:999px;background:#6aa7ff10}
+.soon i{width:6px;height:6px;border-radius:50%;background:var(--cool);box-shadow:0 0 8px var(--cool);animation:beat 1.6s infinite}
+
+/* 4-5 marcadores */
+.ghost{position:absolute!important;z-index:0!important;font-size:clamp(160px,42vw,520px);font-weight:700;letter-spacing:-.06em;line-height:1;color:transparent;-webkit-text-stroke:1px #ffffff12;user-select:none;pointer-events:none;top:50%;left:50%;transform:translate(-50%,-52%)}
+.tag{margin-top:26px;font-family:var(--mono);font-size:12px;color:var(--mute);padding:7px 14px;border:1px dashed #ffffff22;border-radius:999px}
+
+@media (max-width:640px){
+  .menu{padding:3px;gap:0}
+  .menu a{padding:8px 10px}
+  .menu a .l{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .menu a .n{opacity:1;font-size:11px}
+  .dots{display:none}
+  .brand span{display:none}
+}
+/* guía visual: halo dorado que late sobre lo que toca pulsar */
+.guide-btn{flex:none;margin:0 auto 0 12px;width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;background:#ffffff08;color:var(--mute);font-family:var(--mono);font-size:14px;line-height:1;transition:color .3s,border-color .3s,background .3s}
+.guide-btn:hover{color:var(--gold-hi);border-color:#c9a22799;background:#c9a2271a}
+.guide-btn[hidden]{display:none}
+.guide-layer{position:fixed;inset:0;z-index:45;overflow:hidden;pointer-events:none;contain:strict}
+.guide-halo{position:absolute;left:0;top:0;pointer-events:none;opacity:0;transition:opacity .45s var(--ease)}
+.guide-halo.on{opacity:1}
+.guide-halo i{position:absolute;inset:0;border-radius:inherit;pointer-events:none}
+.guide-ring{border:2px solid var(--gold-hi);box-shadow:0 0 12px 1px #c9a227aa,inset 0 0 8px -2px #c9a22777;animation:guideBeat 1.6s ease-in-out infinite}
+.guide-ping{border:2px solid var(--gold);opacity:0;animation:guidePing 1.6s ease-out infinite}
+@keyframes guideBeat{0%,100%{transform:scale(1);opacity:.55}50%{transform:scale(var(--beat,1.05));opacity:1}}
+@keyframes guidePing{0%{transform:scale(1);opacity:.7}100%{transform:scale(var(--ping,1.3));opacity:0}}
+.guide-halo.ok .guide-ring{border-color:#fff6d6;box-shadow:0 0 28px 8px #ffe08acc,inset 0 0 16px 0 #ffe08a88;animation:guideOk .8s var(--ease) both}
+.guide-halo.ok .guide-ping{animation:none;opacity:0}
+@keyframes guideOk{0%{transform:scale(1);opacity:1}100%{transform:scale(var(--ping,1.2));opacity:0}}
+.guide-bubble{position:absolute;left:0;top:0;pointer-events:none;width:max-content;max-width:min(260px,calc(100vw - 24px));padding:7px 14px;border:1px solid #c9a22799;border-radius:16px;background:#0d0d10f2;color:var(--gold-hi);font-size:13px;line-height:1.3;text-align:center;box-shadow:0 0 22px -4px #c9a227aa,0 10px 24px -12px #000;opacity:0;transition:opacity .45s var(--ease)}
+.guide-bubble.on{opacity:1}
+@media (max-width:640px){.guide-btn{width:28px;height:28px;margin-left:8px}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  .rv{opacity:1;transform:none;filter:none}
+  main{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header>
+  <a class="brand" href="#inicio" aria-label="Neuron, inicio"><i></i><span>@dniskav/neuron</span></a>
+  <button class="guide-btn" id="guide-btn" type="button" aria-label="Mostrar la guía de esta pantalla" title="Guía de esta pantalla" hidden>?</button>
+  <nav class="menu" aria-label="Principal">
+    <a href="#inicio"><span class="n">01</span><span class="l">Inicio</span></a>
+    <a href="#neurona"><span class="n">02</span><span class="l">Neurona</span></a>
+    <a href="#ensenale"><span class="n">03</span><span class="l">Enséñale</span></a>
+    <a href="#equipo"><span class="n">04</span><span class="l">Equipo</span></a>
+    <a href="#snake"><span class="n">05</span><span class="l">Snake</span></a>
+    <a href="#juegos"><span class="n">06</span><span class="l">Juegos</span></a>
+    <a href="#historia"><span class="n">07</span><span class="l">Historia</span></a>
+  </nav>
+</header>
+<nav class="dots" aria-label="Pantallas">
+  <a href="#inicio" title="Inicio" aria-label="Inicio"></a>
+  <a href="#neurona" title="Neurona" aria-label="Neurona"></a>
+  <a href="#ensenale" title="Enséñale" aria-label="Enséñale"></a>
+  <a href="#equipo" title="Equipo" aria-label="Equipo"></a>
+  <a href="#snake" title="Snake" aria-label="Snake"></a>
+  <a href="#juegos" title="Juegos" aria-label="Juegos"></a>
+  <a href="#historia" title="Historia" aria-label="Historia"></a>
+</nav>
+
+<main>
+  <section id="inicio" aria-labelledby="t-inicio">
+    <canvas class="bg" id="net" aria-hidden="true"></canvas>
+    <div class="vig" aria-hidden="true"></div>
+    <h1 id="t-inicio" class="rv" style="--d:0">Neuron</h1>
+    <p class="sub rv" style="--d:3">Redes neuronales que puedes ver aprender. Hechas a mano, sin cajas negras.</p>
+    <div class="pill rv" style="--d:5"><b>npm</b> i @dniskav/neuron <span>· 0 dependencias</span></div>
+    <a class="scroll rv" style="--d:7" href="#neurona" aria-label="Desliza hacia abajo"><span>desliza</span><span class="bar"></span></a>
+  </section>
+
+  <section id="neurona" aria-labelledby="t-neurona">
+    <div class="nwrap">
+      <div>
+        <div class="ncv rv" style="--d:0"><canvas id="neuron" role="img" aria-label="Dibujo animado de una neurona: señales llegan por las dendritas, el cuerpo se ilumina y dispara un pulso por el axón."></canvas></div>
+        <div class="hint rv" style="--d:1"><i></i>Toca una rama para enviarle una señal</div>
+      </div>
+      <div class="ntext">
+        <p class="eyebrow rv" style="--d:1">La pieza más pequeña</p>
+        <h2 id="t-neurona" class="rv" style="--d:2;margin-top:8px">Así piensa una neurona</h2>
+        <ol class="steps" id="steps">
+          <li class="rv" style="--d:3"><span class="num">1</span><div><h3>Escucha</h3><p>Recibe señales. Unas pesan más que otras.</p></div></li>
+          <li class="rv" style="--d:4"><span class="num">2</span><div><h3>Decide</h3><p>Si juntan lo suficiente, se enciende.</p></div></li>
+          <li class="rv" style="--d:5"><span class="num">3</span><div><h3>Avisa</h3><p>Pasa el mensaje a las siguientes.</p></div></li>
+        </ol>
+        <p class="closing rv" style="--d:6">Neuron empieza aquí: <b>una sola neurona</b>. Con muchas, una serpiente aprende a jugar.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="ensenale" aria-labelledby="t-ensenale">
+    <div class="ehead">
+      <p class="eyebrow rv" style="--d:0">03 · pruébalo</p>
+      <h2 id="t-ensenale" class="rv" style="--d:1">Enséñale</h2>
+      <p class="sub rv" style="--d:2">Elige cuántos colores le enseñas. Luego, un examen: ¿claro u oscuro?</p>
+    </div>
+    <div class="elab">
+      <div class="esets rv" style="--d:3">
+        <p class="elabel">Ejemplos para aprender</p>
+        <div class="slist" id="slist" role="group" aria-label="Conjuntos de ejemplos"></div>
+        <button class="e0" id="e0" type="button" aria-pressed="false">Examinar sin enseñarle</button>
+        <p class="elabel plab">O prueba un color tuyo</p>
+        <div class="pick" id="pick">
+          <button class="pickc" id="pickc" type="button" title="Probar un color" aria-label="Probar un color" aria-haspopup="true" aria-expanded="false" aria-controls="ppop"><span class="pdot" id="pdot"></span></button>
+          <div class="ppop" id="ppop" role="group" aria-label="Muestras de color para probar" hidden></div>
+          <div class="pq" id="pq" role="group" aria-label="Colores rápidos para probar"></div>
+        </div>
+        <p class="enote" id="enote">Esta neurona es de verdad: aprende con <b>@dniskav/neuron</b>.</p>
+      </div>
+      <div class="emid rv" style="--d:4">
+        <div class="ecv">
+          <div class="ecode" id="ecode">
+            <button class="cbtn" id="cbtn" type="button" aria-label="Ver el código" title="Ver el código" aria-expanded="false" aria-controls="cpanel">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5"/><path d="M16 7l5 5-5 5"/><path d="M14 4l-4 16"/></svg>
+            </button>
+            <div class="cpanel" id="cpanel" role="region" aria-label="Código fuente de esta pantalla" tabindex="-1" hidden>
+              <button class="ccopy" id="ccopy" type="button" aria-label="Copiar el código" title="Copiar el código">
+                <svg class="i-copy" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+                <svg class="i-ok" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>
+              </button>
+              <pre class="ccode" id="ccode"></pre>
+            </div>
+            <button class="cbtn bbtn" id="bbtn" type="button" aria-label="Ver lo que aprendió" title="Ver lo que aprendió" aria-expanded="false" aria-controls="bpanel">
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g id="bl"><path d="M12 5.2C12 3.9 10.9 3 9.7 3 8.1 3 7 4.1 7.2 5.5 5.5 5.8 4.4 7.1 4.4 8.7c0 .9.4 1.7 1 2.2-.7.6-1 1.5-1 2.4 0 1.6 1.2 2.9 2.7 3 .3 1.6 1.5 2.7 3.1 2.7 1 0 1.8-.7 1.8-1.7z"/><path d="M8.2 9.6c1.2.2 2.2.9 2.7 2M7.6 14.2c1.2-.2 2.2-.9 2.8-1.9"/></g><g transform="matrix(-1 0 0 1 24 0)"><path d="M12 5.2C12 3.9 10.9 3 9.7 3 8.1 3 7 4.1 7.2 5.5 5.5 5.8 4.4 7.1 4.4 8.7c0 .9.4 1.7 1 2.2-.7.6-1 1.5-1 2.4 0 1.6 1.2 2.9 2.7 3 .3 1.6 1.5 2.7 3.1 2.7 1 0 1.8-.7 1.8-1.7z"/><path d="M8.2 9.6c1.2.2 2.2.9 2.7 2M7.6 14.2c1.2-.2 2.2-.9 2.8-1.9"/></g></svg>
+            </button>
+            <div class="cpanel bpanel" id="bpanel" role="region" aria-label="Lo que aprendió la neurona" tabindex="-1" hidden>
+              <button class="ccopy" id="bcopy" type="button" aria-label="Copiar el código" title="Copiar el código">
+                <svg class="i-copy" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+                <svg class="i-ok" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>
+              </button>
+              <p class="bhead">Todo lo que sabe cabe en 4 números</p>
+              <div class="bars" id="bars">
+                <div class="brow" style="--c:255,96,84"><span class="bl">rojo</span><div class="bt"><i class="bz"></i><i class="bb"></i></div><span class="bv">–</span></div>
+                <div class="brow" style="--c:96,214,112"><span class="bl">verde</span><div class="bt"><i class="bz"></i><i class="bb"></i></div><span class="bv">–</span></div>
+                <div class="brow" style="--c:104,152,255"><span class="bl">azul</span><div class="bt"><i class="bz"></i><i class="bb"></i></div><span class="bv">–</span></div>
+                <div class="brow" style="--c:255,224,138"><span class="bl">la línea</span><div class="bt"><i class="bz"></i><i class="bb"></i></div><span class="bv">–</span></div>
+              </div>
+              <p class="bnote" id="bnote"></p>
+              <p class="bcur" id="bcur"></p>
+              <p class="bsec">Compáralos</p>
+              <div class="crows" id="crows" role="group" aria-label="Lo aprendido con cada conjunto, de menos a más ejemplos"></div>
+              <p class="bphrase" id="bphrase"></p>
+              <pre class="ccode" id="bcode"></pre>
+            </div>
+          </div>
+          <canvas id="eneuron" role="img" aria-label="Una neurona nueva con tres entradas, rojo, verde y azul, y una sola salida, claro u oscuro. Cada color se descompone en sus tres partes, viaja por las tres ramas y la neurona responde. Al aprender, después llega la corrección y las ramas cambian de grosor; en el examen solo responde."></canvas></div>
+        <p class="eleg" id="eleg"><span id="lg-a"><b>Aprender:</b> responde y la <i>corrigen</i>.</span> <span id="lg-e"><b>Examen:</b> solo responde.</span><br>Más grueso = cuenta más · cortado = resta.<br>Cada color llena la neurona. Si pasa la línea, dice claro. Aprender mueve la línea y cambia cuánto llena cada color.</p>
+        <p class="estatus" id="estatus">Elige un conjunto de ejemplos para empezar</p>
+        <p class="exlab">Examen: 12 colores nuevos</p>
+        <div class="exam" id="exam" role="group" aria-label="Los 12 colores del examen"></div>
+      </div>
+      <div class="eside rv" style="--d:5">
+        <div class="flask"><canvas id="eflask" role="img" aria-label="Frasco que se llena según los aciertos del examen"></canvas></div>
+        <p class="ephrase" id="ephrase"></p>
+        <p class="jarlab">Comparar · ejemplos y aciertos</p>
+        <div class="jars" id="jars"></div>
+      </div>
+    </div>
+    <p class="vh" id="elive" aria-live="polite"></p>
+  </section>
+
+  <section id="equipo" aria-labelledby="t-equipo">
+    <div class="ehead">
+      <p class="eyebrow rv" style="--d:0">04 · en equipo</p>
+      <h2 id="t-equipo" class="rv" style="--d:1">Ni claro ni oscuro</h2>
+      <p class="sub rv" style="--d:2">Ahora la pregunta es otra: ¿es un color intermedio? Una neurona sola solo traza una línea. ¿Y un equipo?</p>
+    </div>
+    <div class="elab">
+      <div class="esets rv" style="--d:3">
+        <p class="elabel">Tamaño del equipo</p>
+        <div class="qteam" role="group" aria-label="Cuántas neuronas tiene el equipo">
+          <button class="qstep" id="qminus" type="button" aria-label="Quitar una neurona">− neurona</button>
+          <output class="qcount" id="qcount" for="qminus qplus">1 neurona sola</output>
+          <button class="qstep" id="qplus" type="button" aria-label="Añadir una neurona">+ neurona</button>
+        </div>
+        <button class="qgo" id="qgo" type="button">Enséñale</button>
+        <button class="e0" id="q0" type="button">Examinar sin enseñarle</button>
+        <p class="elabel plab">60 colores para aprender</p>
+        <div class="qdots" id="qdots" role="img" aria-label="Los 60 colores con los que aprende: un tercio oscuros, un tercio intermedios y un tercio claros"></div>
+        <p class="elabel plab">O prueba un color tuyo</p>
+        <div class="pick" id="qpick">
+          <button class="pickc" id="qpickc" type="button" title="Probar un color" aria-label="Probar un color" aria-haspopup="true" aria-expanded="false" aria-controls="qppop"><span class="pdot" id="qpdot"></span></button>
+          <div class="ppop" id="qppop" role="group" aria-label="Muestras de color para probar" hidden></div>
+          <div class="pq" id="qpq" role="group" aria-label="Colores rápidos para probar"></div>
+        </div>
+        <p class="enote" id="qnote">Estas neuronas son de verdad: aprenden con <b>@dniskav/neuron</b>.</p>
+      </div>
+      <div class="emid rv" style="--d:4">
+        <div class="ecv">
+          <div class="ecode" id="qcode">
+            <button class="cbtn" id="qcbtn" type="button" aria-label="Ver el código" title="Ver el código" aria-expanded="false" aria-controls="qcpanel">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5"/><path d="M16 7l5 5-5 5"/><path d="M14 4l-4 16"/></svg>
+            </button>
+            <div class="cpanel" id="qcpanel" role="region" aria-label="Código fuente de esta pantalla" tabindex="-1" hidden>
+              <button class="ccopy" id="qccopy" type="button" aria-label="Copiar el código" title="Copiar el código">
+                <svg class="i-copy" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+                <svg class="i-ok" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>
+              </button>
+              <pre class="ccode" id="qccode"></pre>
+            </div>
+            <button class="cbtn bbtn" id="qbbtn" type="button" aria-label="Ver lo que aprendió" title="Ver lo que aprendió" aria-expanded="false" aria-controls="qbpanel">
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g><path d="M12 5.2C12 3.9 10.9 3 9.7 3 8.1 3 7 4.1 7.2 5.5 5.5 5.8 4.4 7.1 4.4 8.7c0 .9.4 1.7 1 2.2-.7.6-1 1.5-1 2.4 0 1.6 1.2 2.9 2.7 3 .3 1.6 1.5 2.7 3.1 2.7 1 0 1.8-.7 1.8-1.7z"/><path d="M8.2 9.6c1.2.2 2.2.9 2.7 2M7.6 14.2c1.2-.2 2.2-.9 2.8-1.9"/></g><g transform="matrix(-1 0 0 1 24 0)"><path d="M12 5.2C12 3.9 10.9 3 9.7 3 8.1 3 7 4.1 7.2 5.5 5.5 5.8 4.4 7.1 4.4 8.7c0 .9.4 1.7 1 2.2-.7.6-1 1.5-1 2.4 0 1.6 1.2 2.9 2.7 3 .3 1.6 1.5 2.7 3.1 2.7 1 0 1.8-.7 1.8-1.7z"/><path d="M8.2 9.6c1.2.2 2.2.9 2.7 2M7.6 14.2c1.2-.2 2.2-.9 2.8-1.9"/></g></svg>
+            </button>
+            <div class="cpanel bpanel" id="qbpanel" role="region" aria-label="Lo que aprendió el equipo" tabindex="-1" hidden>
+              <button class="ccopy" id="qbcopy" type="button" aria-label="Copiar el código" title="Copiar el código">
+                <svg class="i-copy" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+                <svg class="i-ok" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>
+              </button>
+              <p class="bhead" id="qbhead"></p>
+              <p class="bnote" id="qbnote"></p>
+              <div id="qbgroups"></div>
+              <p class="bsec">Compáralos</p>
+              <div class="crows" id="qcrows" role="group" aria-label="Lo aprendido con 1, 2 y 3 neuronas"></div>
+              <p class="bphrase" id="qbphrase"></p>
+              <pre class="ccode" id="qbcode"></pre>
+            </div>
+          </div>
+          <canvas id="qneuron" role="img" aria-label="Una red real: tres entradas, rojo, verde y azul, llegan a las neuronas del equipo; la última decide y tiene una sola salida, intermedio o no. Al aprender, después de responder llega la corrección y las conexiones cambian de grosor; en el examen solo responde."></canvas></div>
+        <p class="eleg" id="qeleg"><span id="qlg-a"><b>Aprender:</b> responde y la <i>corrigen</i>.</span> <span id="qlg-e"><b>Examen:</b> solo responde.</span><br>Más grueso = cuenta más · cortado = resta.<br>Cada neurona se llena con lo que le llega. Si pasa su línea dorada, se enciende y avisa a la siguiente.</p>
+        <p class="estatus" id="qstatus">Equipo nuevo: 1 neurona sola · pulsa «Enséñale»</p>
+        <p class="exlab">Examen: 12 colores nuevos · ¿intermedio?</p>
+        <div class="exam" id="qexam" role="group" aria-label="Los 12 colores del examen"></div>
+      </div>
+      <div class="eside rv" style="--d:5">
+        <div class="flask"><canvas id="qflask" role="img" aria-label="Frasco que se llena según los aciertos del examen"></canvas></div>
+        <p class="ephrase" id="qphrase"></p>
+        <p class="jarlab">Comparar · neuronas y aciertos</p>
+        <div class="jars" id="qjars"></div>
+      </div>
+    </div>
+    <p class="vh" id="qlive" aria-live="polite"></p>
+  </section>
+
+  <section id="snake" aria-labelledby="t-snake">
+    <p class="eyebrow rv" style="--d:0">05 · demo</p>
+    <h2 id="t-snake" class="rv" style="--d:1;margin-top:10px">Snake</h2>
+    <p class="sub rv" style="--d:2">Una serpiente que aprende a moverse, intento tras intento.</p>
+    <div class="frame rv" style="--d:3"><canvas id="snakecv" role="img" aria-label="Adelanto: una serpiente sencilla moviéndose por una cuadrícula"></canvas></div>
+    <span class="soon rv" style="--d:4"><i></i>próximamente: la demo real</span>
+  </section>
+
+  <section id="juegos" aria-labelledby="t-juegos">
+    <div class="ghost" aria-hidden="true">06</div>
+    <p class="eyebrow rv" style="--d:0">06</p>
+    <h2 id="t-juegos" class="rv" style="--d:1;margin-top:10px">Juegos</h2>
+    <p class="sub rv" style="--d:2">Pequeños juegos donde la red es la protagonista.</p>
+    <span class="tag rv" style="--d:3">en construcción</span>
+  </section>
+
+  <section id="historia" aria-labelledby="t-historia">
+    <div class="ghost" aria-hidden="true">07</div>
+    <p class="eyebrow rv" style="--d:0">07</p>
+    <h2 id="t-historia" class="rv" style="--d:1;margin-top:10px">Historia</h2>
+    <p class="sub rv" style="--d:2">De una sola neurona a las redes que hoy conversan.</p>
+    <span class="tag rv" style="--d:3">en construcción</span>
+  </section>
+</main>
+
+<script>
+(function(){
+'use strict';
+var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var main = document.querySelector('main');
+var sections = Array.prototype.slice.call(document.querySelectorAll('main > section'));
+var menuLinks = Array.prototype.slice.call(document.querySelectorAll('.menu a, .dots a'));
+var current = 0;
+
+/* ---------- navegación ---------- */
+function go(i){
+  i = Math.max(0, Math.min(sections.length - 1, i));
+  sections[i].scrollIntoView({behavior: reduced ? 'auto' : 'smooth', block: 'start'});
+}
+menuLinks.concat(Array.prototype.slice.call(document.querySelectorAll('.brand, .scroll'))).forEach(function(a){
+  a.addEventListener('click', function(e){
+    var id = (a.getAttribute('href') || '').slice(1);
+    var i = sections.findIndex(function(s){ return s.id === id; });
+    if (i >= 0){ e.preventDefault(); go(i); }
+  });
+});
+window.addEventListener('keydown', function(e){
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  var k = e.key;
+  if (k === 'ArrowDown' || k === 'PageDown' || k === 'ArrowRight'){ e.preventDefault(); go(current + 1); }
+  else if (k === 'ArrowUp' || k === 'PageUp' || k === 'ArrowLeft'){ e.preventDefault(); go(current - 1); }
+  else if (k === 'Home'){ e.preventDefault(); go(0); }
+  else if (k === 'End'){ e.preventDefault(); go(sections.length - 1); }
+});
+
+function setActive(i){
+  current = i;
+  menuLinks.forEach(function(a){
+    var on = a.getAttribute('href') === '#' + sections[i].id;
+    if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+  });
+  try { history.replaceState(null, '', '#' + sections[i].id); } catch (e) {}
+}
+var secIO = new IntersectionObserver(function(entries){
+  entries.forEach(function(en){
+    var i = sections.indexOf(en.target);
+    if (en.intersectionRatio >= 0.5){ en.target.classList.add('in'); setActive(i); }
+    else if (en.intersectionRatio < 0.05){ en.target.classList.remove('in'); }
+  });
+}, {root: main, threshold: [0, 0.05, 0.5, 0.75]});
+sections.forEach(function(s){ secIO.observe(s); });
+if (reduced) sections.forEach(function(s){ s.classList.add('in'); });
+
+var h = (location.hash || '').slice(1);
+var hi = sections.findIndex(function(s){ return s.id === h; });
+if (hi > 0){ main.style.scrollBehavior = 'auto'; sections[hi].scrollIntoView({block: 'start'}); main.style.scrollBehavior = ''; }
+else { sections[0].classList.add('in'); setActive(0); }
+
+/* ---------- bucle de canvas ---------- */
+function createLoop(canvas, o){
+  var ctx = canvas.getContext('2d');
+  var w = 0, hh = 0, dpr = 1, visible = false, raf = 0, last = 0, t = 0, running = false;
+  function size(){
+    var r = canvas.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = r.width; hh = r.height;
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(hh * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (o.init) o.init(w, hh);
+    if (!running) frame(0, true);
+  }
+  function frame(now, once){
+    var dt = once ? 0 : Math.min(0.05, (now - last) / 1000);
+    last = now; t += dt;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, hh);
+    o.draw(ctx, w, hh, dt, t);
+    if (!once && running) raf = requestAnimationFrame(frame);
+  }
+  function update(){
+    var want = visible && !document.hidden && !reduced;
+    if (want && !running){ running = true; last = performance.now(); raf = requestAnimationFrame(frame); }
+    else if (!want && running){ running = false; cancelAnimationFrame(raf); }
+  }
+  new IntersectionObserver(function(en){ visible = en[0].isIntersecting; update(); }, {root: null, threshold: 0}).observe(canvas);
+  document.addEventListener('visibilitychange', update);
+  new ResizeObserver(size).observe(canvas);
+  size();
+  return {ctx: ctx, redraw: function(){ if (w) frame(performance.now(), true); }};
+}
+
+/* ---------- 1. red de fondo ---------- */
+(function(){
+  var nodes = [], pulses = [], maxD = 150, spawn = 0;
+  function init(w, h){
+    var n = Math.max(28, Math.min(80, Math.round(w * h / 15000)));
+    maxD = Math.max(110, Math.min(170, w / 7));
+    nodes = [];
+    for (var i = 0; i < n; i++) nodes.push({x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - .5) * 8, vy: (Math.random() - .5) * 8, g: 0});
+    pulses = [];
+  }
+  function neighbors(a){
+    var r = [];
+    for (var j = 0; j < nodes.length; j++){
+      if (nodes[j] === a) continue;
+      var dx = nodes[j].x - a.x, dy = nodes[j].y - a.y;
+      if (dx * dx + dy * dy < maxD * maxD) r.push(nodes[j]);
+    }
+    return r;
+  }
+  function emit(a){
+    var nb = neighbors(a);
+    if (!nb.length || pulses.length > 40) return;
+    pulses.push({a: a, b: nb[(Math.random() * nb.length) | 0], t: 0, s: .6 + Math.random() * .5});
+  }
+  createLoop(document.getElementById('net'), {
+    init: init,
+    draw: function(ctx, w, h, dt){
+      var i, j, a, b;
+      for (i = 0; i < nodes.length; i++){
+        a = nodes[i];
+        a.x += a.vx * dt; a.y += a.vy * dt;
+        if (a.x < 0 || a.x > w) a.vx *= -1;
+        if (a.y < 0 || a.y > h) a.vy *= -1;
+        a.g = Math.max(0, a.g - dt * 1.6);
+      }
+      spawn -= dt;
+      if (spawn <= 0){ emit(nodes[(Math.random() * nodes.length) | 0]); spawn = .25 + Math.random() * .35; }
+      ctx.lineWidth = 1;
+      for (i = 0; i < nodes.length; i++){
+        a = nodes[i];
+        for (j = i + 1; j < nodes.length; j++){
+          b = nodes[j];
+          var dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
+          if (d2 < maxD * maxD){
+            ctx.strokeStyle = 'rgba(201,162,39,' + (0.2 * (1 - Math.sqrt(d2) / maxD)).toFixed(3) + ')';
+            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+          }
+        }
+      }
+      for (i = pulses.length - 1; i >= 0; i--){
+        var p = pulses[i]; p.t += dt * p.s;
+        if (p.t >= 1){
+          p.b.g = 1; pulses.splice(i, 1);
+          if (Math.random() < .65) emit(p.b);
+          continue;
+        }
+        var x = p.a.x + (p.b.x - p.a.x) * p.t, y = p.a.y + (p.b.y - p.a.y) * p.t;
+        var gr = ctx.createRadialGradient(x, y, 0, x, y, 14);
+        gr.addColorStop(0, 'rgba(255,230,150,.95)'); gr.addColorStop(.3, 'rgba(201,162,39,.4)'); gr.addColorStop(1, 'rgba(201,162,39,0)');
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, 14, 0, 6.2832); ctx.fill();
+      }
+      for (i = 0; i < nodes.length; i++){
+        a = nodes[i];
+        if (a.g > 0){
+          var g2 = ctx.createRadialGradient(a.x, a.y, 0, a.x, a.y, 22);
+          g2.addColorStop(0, 'rgba(160,200,255,' + (a.g * .7).toFixed(2) + ')'); g2.addColorStop(1, 'rgba(106,167,255,0)');
+          ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(a.x, a.y, 22, 0, 6.2832); ctx.fill();
+        }
+        ctx.fillStyle = 'rgba(235,225,190,' + (.35 + a.g * .6).toFixed(2) + ')';
+        ctx.beginPath(); ctx.arc(a.x, a.y, 1.8 + a.g * 1.5, 0, 6.2832); ctx.fill();
+      }
+    }
+  });
+})();
+
+/* ---------- 2. la neurona ---------- */
+(function(){
+  var cv = document.getElementById('neuron');
+  var W = 640, H = 420, S = {x: 340, y: 210, r: 44};
+  var seed = 11;
+  function rnd(){ seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  function bez(p0, p1, p2, p3, t){
+    var u = 1 - t, a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
+    return [a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0], a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1]];
+  }
+  var defs = [
+    {tip: [30, 50],  c1: [120, 40],  c2: [190, 120], a: -2.5, w: .9},
+    {tip: [18, 140], c1: [110, 150], c2: [200, 175], a: -2.95, w: .35},
+    {tip: [25, 228], c1: [110, 236], c2: [200, 215], a: 3.1,  w: .6},
+    {tip: [40, 312], c1: [120, 292], c2: [200, 262], a: 2.75, w: .2},
+    {tip: [110, 396], c1: [170, 362], c2: [250, 300], a: 2.3, w: .75},
+    {tip: [160, 12], c1: [215, 60],  c2: [275, 110], a: -2.05, w: .45}
+  ];
+  var N = 40;
+  defs.forEach(function(d){
+    var end = [S.x + Math.cos(d.a) * S.r * .85, S.y + Math.sin(d.a) * S.r * .85];
+    d.pts = [];
+    for (var i = 0; i < N; i++) d.pts.push(bez(d.tip, d.c1, d.c2, end, i / (N - 1)));
+    d.br = [];
+    [9, 17, 25].forEach(function(k){
+      var p = d.pts[k], q = d.pts[k + 2], ang = Math.atan2(q[1] - p[1], q[0] - p[0]);
+      var side = rnd() < .5 ? -1 : 1, a2 = ang + side * (.7 + rnd() * .5), len = 28 + rnd() * 40;
+      var e = [p[0] + Math.cos(a2) * len, p[1] + Math.sin(a2) * len];
+      var c = [p[0] + Math.cos(a2 + side * .35) * len * .55, p[1] + Math.sin(a2 + side * .35) * len * .55];
+      var a3 = a2 - side * .6, l3 = len * .5;
+      d.br.push({p: p, c: c, e: e, t: [e[0] + Math.cos(a3) * l3, e[1] + Math.sin(a3) * l3]});
+    });
+  });
+  var AX = [], AN = 60;
+  for (var i = 0; i < AN; i++){
+    var f = i / (AN - 1), x = S.x + S.r * .9 + f * (600 - S.x - S.r * .9);
+    AX.push([x, 210 + Math.sin(f * 9) * 9 * Math.min(1, f * 3)]);
+  }
+  var endP = AX[AN - 1];
+  var terms = [[0, 42]].map(function(a){ return [endP[0] + Math.cos(a[0]) * a[1] * .7, endP[1] + Math.sin(a[0]) * a[1]]; });
+
+  var signals = [], axPulse = -1, charge = 0, shown = 0, flash = 0, termFlash = 0, ripples = [], auto = .8;
+  var lastSig = -9, lastFire = -9, clock = 0, activeStep = 0;
+  var stepEls = Array.prototype.slice.call(document.querySelectorAll('#steps li'));
+
+  function addSignal(i){ signals.push({d: defs[i], t: 0, s: .55 + Math.random() * .1}); lastSig = clock; }
+  function setStep(n){
+    if (n === activeStep) return; activeStep = n;
+    stepEls.forEach(function(el, k){ el.classList.toggle('on', k === n - 1); });
+  }
+
+  var view = {s: 1, ox: 0, oy: 0};
+  function fit(w, h){ var s = Math.min(w / W, h / H); view.s = s; view.ox = (w - W * s) / 2; view.oy = (h - H * s) / 2; }
+
+  function line(ctx, pts, wBase, taper){
+    for (var i = 1; i < pts.length; i++){
+      ctx.lineWidth = wBase * (taper ? .35 + .65 * i / pts.length : 1);
+      ctx.beginPath(); ctx.moveTo(pts[i - 1][0], pts[i - 1][1]); ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke();
+    }
+  }
+  function glow(ctx, x, y, r, c0, c1){
+    var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, c0); g.addColorStop(1, c1);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+  }
+
+  function draw(ctx, w, h, dt, t){
+    clock += dt;
+    fit(w, h);
+    // lógica
+    auto -= dt;
+    if (auto <= 0 && !reduced){ addSignal((Math.random() * defs.length) | 0); auto = .7 + Math.random() * .8; }
+    for (var i = signals.length - 1; i >= 0; i--){
+      var sg = signals[i]; sg.t += dt * sg.s;
+      if (sg.t >= 1){ charge += .12 + sg.d.w * .26; flash = Math.max(flash, .25); signals.splice(i, 1); }
+    }
+    charge = Math.max(0, charge - dt * .04);
+    if (charge >= 1 && axPulse < 0){ axPulse = 0; flash = 1; charge = 0; lastFire = clock; }
+    if (axPulse >= 0){ axPulse += dt * .9; if (axPulse >= 1){ axPulse = -1; termFlash = 1; } }
+    shown += (Math.min(charge, 1) - shown) * Math.min(1, dt * 5);
+    flash = Math.max(0, flash - dt * 1.6); termFlash = Math.max(0, termFlash - dt * 1.4);
+    if (clock - lastFire < 1.8) setStep(3); else if (charge > .5) setStep(2); else if (clock - lastSig < 1.3) setStep(1); else setStep(0);
+
+    ctx.save(); ctx.translate(view.ox, view.oy); ctx.scale(view.s, view.s);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    var lit = shown * .6 + flash * .4;
+
+    // ramas finas (dendritas secundarias)
+    defs.forEach(function(d){
+      ctx.strokeStyle = 'rgba(201,162,39,' + (.18 + d.w * .2) + ')'; ctx.lineWidth = 1.3;
+      d.br.forEach(function(b){
+        ctx.beginPath(); ctx.moveTo(b.p[0], b.p[1]); ctx.quadraticCurveTo(b.c[0], b.c[1], b.e[0], b.e[1]); ctx.lineTo(b.t[0], b.t[1]); ctx.stroke();
+      });
+    });
+    // dendritas principales: más gruesas = más importantes
+    defs.forEach(function(d){
+      var wd = 2 + d.w * 5;
+      ctx.strokeStyle = 'rgba(201,162,39,.07)'; line(ctx, d.pts, wd * 3.2, true);
+      ctx.strokeStyle = 'rgba(214,176,52,' + (.4 + d.w * .45) + ')'; line(ctx, d.pts, wd, true);
+      glow(ctx, d.tip[0], d.tip[1], 5 + d.w * 5, 'rgba(255,224,138,' + (.35 + d.w * .4) + ')', 'rgba(201,162,39,0)');
+    });
+    // axón
+    ctx.strokeStyle = 'rgba(201,162,39,.08)'; line(ctx, AX, 14, false);
+    ctx.strokeStyle = 'rgba(190,155,40,.75)'; line(ctx, AX, 4, false);
+    ctx.strokeStyle = 'rgba(255,224,138,.12)'; ctx.lineWidth = 11;
+    [.2, .4, .6, .8].forEach(function(f){
+      var k = Math.round(f * (AN - 1)), a = AX[k - 2], b = AX[k + 2];
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+    });
+    ctx.strokeStyle = 'rgba(190,155,40,.7)'; ctx.lineWidth = 2;
+    terms.forEach(function(p){ ctx.beginPath(); ctx.moveTo(endP[0], endP[1]); ctx.lineTo(p[0], p[1]); ctx.stroke(); });
+    terms.forEach(function(p){ glow(ctx, p[0], p[1], 7 + termFlash * 9, 'rgba(180,215,255,' + (.35 + termFlash * .6) + ')', 'rgba(106,167,255,0)'); });
+
+    // señales
+    signals.forEach(function(sg){
+      var n = sg.d.pts.length - 1, k = sg.t * n, i0 = Math.floor(k), f = k - i0, a = sg.d.pts[i0], b = sg.d.pts[Math.min(n, i0 + 1)];
+      var x = a[0] + (b[0] - a[0]) * f, y = a[1] + (b[1] - a[1]) * f, r = 6 + sg.d.w * 9;
+      glow(ctx, x, y, r * 2.2, 'rgba(255,240,190,' + (.25 + sg.d.w * .3) + ')', 'rgba(255,200,80,0)');
+      ctx.fillStyle = '#fff6d6'; ctx.beginPath(); ctx.arc(x, y, 2 + sg.d.w * 3.2, 0, 6.2832); ctx.fill();
+    });
+    // pulso en el axón
+    if (axPulse >= 0){
+      var kk = axPulse * (AN - 1), j = Math.floor(kk), pp = AX[Math.min(AN - 1, j)];
+      glow(ctx, pp[0], pp[1], 34, 'rgba(210,230,255,.85)', 'rgba(106,167,255,0)');
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(pp[0], pp[1], 4.5, 0, 6.2832); ctx.fill();
+    }
+
+    // cuerpo
+    glow(ctx, S.x, S.y, S.r * (2 + lit * 2.2), 'rgba(255,205,90,' + (.1 + lit * .5) + ')', 'rgba(201,162,39,0)');
+    if (flash > .3) glow(ctx, S.x, S.y, S.r * 4, 'rgba(180,215,255,' + (flash * .35) + ')', 'rgba(106,167,255,0)');
+    ctx.beginPath();
+    for (var q = 0; q <= 64; q++){
+      var th = q / 64 * 6.2832, rr = S.r * (1 + .05 * Math.sin(th * 3 + t * .8) + .035 * Math.sin(th * 5 - t * .6) + lit * .05);
+      var px = S.x + Math.cos(th) * rr, py = S.y + Math.sin(th) * rr;
+      if (q) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+    }
+    ctx.closePath();
+    var bg = ctx.createRadialGradient(S.x - 8, S.y - 10, 2, S.x, S.y, S.r * 1.1);
+    bg.addColorStop(0, 'rgba(255,' + (215 + lit * 30 | 0) + ',' + (130 + lit * 80 | 0) + ',' + (.55 + lit * .45) + ')');
+    bg.addColorStop(.6, 'rgba(' + (150 + lit * 90 | 0) + ',' + (110 + lit * 70 | 0) + ',25,' + (.5 + lit * .4) + ')');
+    bg.addColorStop(1, 'rgba(60,42,8,.85)');
+    ctx.fillStyle = bg; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,224,138,' + (.45 + lit * .5) + ')'; ctx.lineWidth = 2; ctx.stroke();
+    glow(ctx, S.x + 4, S.y + 2, 12, 'rgba(255,250,230,' + (.35 + lit * .6) + ')', 'rgba(255,224,138,0)');
+
+    // ondas de toque
+    for (var r = ripples.length - 1; r >= 0; r--){
+      var rp = ripples[r]; rp.t += dt;
+      if (rp.t > 1){ ripples.splice(r, 1); continue; }
+      ctx.strokeStyle = 'rgba(160,200,255,' + (1 - rp.t) * .7 + ')'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(rp.x, rp.y, 6 + rp.t * 34, 0, 6.2832); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  createLoop(cv, {draw: draw});
+  /* para la guía visual: punta de la dendrita principal en coordenadas de página */
+  window.__neuronTip = function(){ var r = cv.getBoundingClientRect(), t = defs[0].tip; return {x: r.left + view.ox + t[0] * view.s, y: r.top + view.oy + t[1] * view.s}; };
+
+  function poke(e){
+    var r = cv.getBoundingClientRect();
+    var x = (e.clientX - r.left - view.ox) / view.s, y = (e.clientY - r.top - view.oy) / view.s;
+    var best = 0, bd = 1e9;
+    defs.forEach(function(d, i){
+      for (var k = 0; k < d.pts.length; k += 3){
+        var dx = d.pts[k][0] - x, dy = d.pts[k][1] - y, dd = dx * dx + dy * dy;
+        if (dd < bd){ bd = dd; best = i; }
+      }
+    });
+    ripples.push({x: x, y: y, t: 0});
+    addSignal(best);
+    signals[signals.length - 1].s = .8;
+    auto = 1.2;
+  }
+  cv.addEventListener('pointerdown', poke);
+})();
+
+var SH = {};   /* ayudas compartidas entre pantallas */
+
+/* ---------- 2b. enséñale: una neurona nueva aprende claro / oscuro ---------- */
+(function(){
+  var cv = document.getElementById('eneuron'), fcv = document.getElementById('eflask');
+  var sec = document.getElementById('ensenale');
+  var SIZES = [2, 3, 5, 8, 13, 21, 34], EPOCHS = 40, LR = .5, THR = .2, GAP = .07;
+  var INIT_SEED = 4, TRAIN_SEED = 382, EXAM_SEED = 5;
+  SH.mulberry = mulberry; SH.css = css; SH.glow = glow; SH.ptAt = ptAt; SH.bez = bez; SH.rrect = rrect;
+
+  /* colores deterministas */
+  function mulberry(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function lin(v){ return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }
+  function lum(c){ return .2126 * lin(c[0]) + .7152 * lin(c[1]) + .0722 * lin(c[2]); }
+  function labelOf(c){ return lum(c) > THR ? 1 : 0; }
+  function makeColors(seed, n){
+    var r = mulberry(seed), out = [], g = 0;
+    while (out.length < n && g++ < 10000){ var c = [r(), r(), r()]; if (Math.abs(lum(c) - THR) < GAP) continue; out.push(c); }
+    return out;
+  }
+  function makeExam(seed, n){
+    var r = mulberry(seed), L = [], D = [], g = 0, i, o = [];
+    while ((L.length < n / 2 || D.length < n / 2) && g++ < 100000){
+      var c = [r(), r(), r()], y = lum(c);
+      if (Math.abs(y - THR) < GAP * 1.6) continue;
+      if (y > THR){ if (L.length < n / 2) L.push(c); } else if (D.length < n / 2) D.push(c);
+    }
+    for (i = 0; i < n / 2; i++) o.push(L[i], D[i]);
+    return o;
+  }
+  function css(c, a){ return 'rgba(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ',' + (a == null ? 1 : a) + ')'; }
+  function q2(c){ return [Math.round(c[0] * 100) / 100, Math.round(c[1] * 100) / 100, Math.round(c[2] * 100) / 100]; }
+  var all = makeColors(TRAIN_SEED, 34).map(q2), exam = makeExam(EXAM_SEED, 12).map(q2);   /* a 2 decimales: lo que se ve en el código es lo que entrena */
+
+  /* la neurona real (librería) o, si el CDN falla, un respaldo con la misma matemática */
+  function Fallback(n){
+    var lim = Math.sqrt(1 / n); this.weights = [];
+    for (var i = 0; i < n; i++) this.weights.push((Math.random() * 2 - 1) * lim);
+    this.bias = 0;
+  }
+  Fallback.prototype.predict = function(x){
+    var s = this.bias; for (var i = 0; i < x.length; i++) s += x[i] * this.weights[i];
+    return 1 / (1 + Math.exp(-s));
+  };
+  Fallback.prototype.train = function(x, t, lr){
+    var p = this.predict(x), g = (t - p) * p * (1 - p);
+    for (var i = 0; i < x.length; i++) this.weights[i] += lr * g * x[i];
+    this.bias += lr * g;
+  };
+  var NN = window.__NeuronN || null, libFailed = false, pendingK = null, source = NN ? 'cdn' : '';
+  var noteEl = document.getElementById('enote');
+  function libReady(){ return !!NN || libFailed; }
+  window.addEventListener('neuron-lib', function(){
+    NN = window.__NeuronN; source = 'cdn';
+    if (pendingK !== null){ var k = pendingK; pendingK = null; start(k); }
+  });
+  window.addEventListener('neuron-lib-fail', function(){
+    libFailed = true; source = 'respaldo';
+    noteEl.innerHTML = 'Esta neurona aprende de verdad, con la misma matemática que <b>@dniskav/neuron</b> (versión local).';
+    if (pendingK !== null){ var k = pendingK; pendingK = null; start(k); }
+  });
+  function newNeuron(){
+    var old = Math.random; Math.random = mulberry(INIT_SEED);
+    try { var n = NN ? new NN(3) : new Fallback(3); n.weights = n.weights.map(function(x){ return Math.round(x * 1000) / 1000; }); return n; } finally { Math.random = old; }
+  }
+
+  /* ---- interfaz ---- */
+  var slist = document.getElementById('slist'), e0 = document.getElementById('e0');
+  var statusEl = document.getElementById('estatus'), examEl = document.getElementById('exam');
+  var phraseEl = document.getElementById('ephrase'), jarsEl = document.getElementById('jars'), liveEl = document.getElementById('elive');
+  var cards = {}, jars = {}, chips = [], results = {};
+  SIZES.forEach(function(k){
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'set'; b.setAttribute('aria-pressed', 'false');
+    var dots = all.slice(0, k).map(function(c){ return '<i style="background:' + css(c) + '"></i>'; }).join('');
+    var nl = all.slice(0, k).filter(labelOf).length;
+    b.setAttribute('aria-label', k + ' ejemplos: ' + nl + ' claros y ' + (k - nl) + ' oscuros');
+    b.innerHTML = '<span class="k"><b>' + k + '</b><small>ejemplos</small></span><span class="cd" aria-hidden="true">' + dots + '</span><span class="res" aria-hidden="true"></span>';
+    b.addEventListener('click', function(){ start(k); });
+    slist.appendChild(b); cards[k] = b;
+  });
+  e0.addEventListener('click', function(){ start(0); });
+  [0].concat(SIZES).forEach(function(k){
+    var j = document.createElement('div'); j.className = 'jar empty';
+    j.innerHTML = '<div class="jb"><div class="liq" style="--h:0%;--q:0"></div></div><span class="jl">' + k + '</span><span class="jp">–</span>';
+    j.title = k ? k + ' ejemplos' : 'Sin enseñarle';
+    jarsEl.appendChild(j); jars[k] = j;
+  });
+  exam.forEach(function(c, i){
+    var d = document.createElement('div'); d.className = 'ex'; d.setAttribute('aria-label', 'Color ' + (i + 1) + ' del examen');
+    d.innerHTML = '<i style="background:' + css(c) + '"></i><span></span>';
+    examEl.appendChild(d); chips.push(d);
+  });
+  function setStatus(t){ statusEl.textContent = t; }
+  function say(t){ liveEl.textContent = t; }
+  function markActive(k){
+    SIZES.forEach(function(s){ cards[s].classList.toggle('on', s === k); cards[s].setAttribute('aria-pressed', s === k ? 'true' : 'false'); });
+    e0.classList.toggle('on', k === 0); e0.setAttribute('aria-pressed', k === 0 ? 'true' : 'false');
+    Object.keys(jars).forEach(function(s){ jars[s].classList.toggle('on', +s === k); });
+  }
+  function setJar(k, pct){
+    var j = jars[k]; j.classList.remove('empty');
+    var l = j.querySelector('.liq'); l.style.setProperty('--h', pct + '%'); l.style.setProperty('--q', (pct / 100).toFixed(2));
+    j.querySelector('.jp').textContent = pct + '%';
+    j.title = (k ? k + ' ejemplos' : 'Sin enseñarle') + ': ' + pct + ' % de aciertos';
+    if (cards[k]) cards[k].querySelector('.res').textContent = pct + ' %';
+  }
+  function phrase(k, pct){
+    var l = k ? all.slice(0, k).filter(labelOf).length : 0, extra = k ? 'Vio ' + l + (l === 1 ? ' claro y ' : ' claros y ') + (k - l) + (k - l === 1 ? ' oscuro.' : ' oscuros.') : 'No vio ningún ejemplo.';
+    var m;
+    if (k === 0) m = 'Sin enseñarle nada, responde casi al azar.';
+    else if (pct >= 85) m = 'Cuantos más ejemplos, mejor responde.';
+    else if (k <= 5) m = 'Con tan pocos ejemplos, adivina más que aprende.';
+    else m = 'Va pillando la idea, pero todavía se equivoca.';
+    return {m: m, extra: extra};
+  }
+
+  /* ---- director ---- */
+  /* Cada color es un «ejemplo» (item) con etapas: in (se descompone y viaja por las 3 dendritas),
+     out (la respuesta sale por el único axón) y, solo al aprender, back (llega la corrección y
+     el pulso vuelve hacia atrás; ahí se llama a train y se leen los pesos reales). */
+  var st = {phase: 'idle', k: null, net: null, set: [], idx: 0, sp: 0, seen: 0, pass: 1, rt: 0, eidx: 0, et: 0, done: 0, correct: 0};
+  var items = [], ripples = [], charge = 0, flash = 0, termFlash = 0, termTint = 0, shown = 0, ans = null, lastCol = null, lastColT = 0, swCol = null, swT = 0;
+  var wT = null, wD = null, bT = 0, bD = 0, level = {z: 0, a: 0}, lvD = -1.5, celebs = [], celebCool = 0, lastDws = [0, 0, 0], lastDb = 0;
+  var target = 0, lv = 0, labelShown = '?';
+  var flaskLoop, neuronLoop;
+  var legEl = document.getElementById('eleg'), codeApi = null, panelsApi = {};
+  var FULL = {in: 1.0, out: .6, back: .85}, FAST = {in: .42, out: .22, back: .32}, EXAMD = {in: .75, out: .42}, FULLN = 3;
+
+  function snapNow(){ return {w: st.net.weights.slice(), b: st.net.bias}; }
+  function setLeg(m){ legEl.className = 'eleg m-' + m; if (codeApi) codeApi.mode(m); }
+
+  function start(k){
+    if (!libReady()){ pendingK = k; setStatus('Preparando la neurona…'); return; }
+    st = {phase: 'idle', k: k, net: newNeuron(), set: all.slice(0, k), idx: 0, sp: 0, seen: 0, pass: 1, rt: 0, eidx: 0, et: 0, done: 0, correct: 0};
+    items = []; ripples = []; charge = 0; flash = 0; termFlash = 0; ans = null; lastCol = null; lastColT = 0; swCol = null; swT = 0; level = {z: 0, a: 0};
+    var s0 = snapNow(); wT = s0.w.slice(); wD = s0.w.slice(); bT = bD = s0.b; st.pw = s0.w.slice(); st.pb = s0.b; celebs = []; celebCool = 0; lvD = GMIN; if (codeApi) codeApi.set(k, s0.w);
+    chips.forEach(function(c){ c.className = 'ex'; c.lastChild.textContent = ''; });
+    target = 0; labelShown = '?'; phraseEl.innerHTML = '';
+    markActive(k); setLeg(k ? 'learn' : 'exam');
+    ripples.push({x: S.x, y: S.y, t: 0, c: 0});
+    say(k ? 'Neurona nueva. Le enseñas ' + k + ' colores.' : 'Neurona nueva, sin enseñarle nada.');
+    if (reduced){ instant(); return; }
+    if (k === 0){ setStatus('Neurona nueva, sin enseñarle nada'); beginExam(); }
+    else { st.phase = 'feed'; setStatus('Neurona nueva · aprendiendo… 0/' + k); }
+  }
+  function trainPass(){ st.set.forEach(function(c){ st.net.train(c, labelOf(c), LR); }); }
+  function beginExam(){
+    var s1 = snapNow(); wT = s1.w; bT = s1.b; if (codeApi) codeApi.cur(null);
+    st.phase = 'exam'; st.eidx = 0; st.et = .6; st.done = 0; st.correct = 0; setLeg('exam');
+    if (st.k) setStatus('Examen · ¿claro u oscuro? Solo responde, no cambia'); else setStatus('Examen sin haberle enseñado · ¿claro u oscuro?');
+  }
+  function launch(kind, col, i, d){ if (codeApi) codeApi.cur(kind === 'train' ? 'ej' : 'ex', i); items.push({kind: kind, c: col, i: i, d: d, stage: 'in', t: 0, p: 0, a: 0, ok: false, z: 0, dead: false}); swCol = col; swT = 1.6; }
+  function setMark(i, ok){ chips[i].classList.remove('now'); chips[i].classList.add(ok ? 'ok' : 'bad'); chips[i].lastChild.textContent = ok ? '✓' : '✗'; chips[i].setAttribute('aria-label', 'Color ' + (i + 1) + ' del examen: ' + (ok ? 'acertó' : 'falló')); }
+  function finish(){
+    var pct = Math.round(st.correct / 12 * 100), k = st.k;
+    if (codeApi) codeApi.cur(null);
+    st.phase = 'done'; results[k] = pct; target = st.correct / 12; labelShown = pct + '%';
+    setJar(k, pct);
+    var p = phrase(k, pct);
+    phraseEl.innerHTML = p.m + '<small>' + p.extra + '</small>';
+    setStatus('Examen terminado · ' + st.correct + ' de 12');
+    say('Acertó ' + st.correct + ' de 12, un ' + pct + ' por ciento. ' + p.m);
+    fcv.setAttribute('aria-label', 'Frasco lleno al ' + pct + ' por ciento');
+  }
+  function instant(){
+    var i;
+    for (i = 0; i < EPOCHS && st.k; i++) trainPass();
+    var s2 = snapNow(); wT = s2.w.slice(); wD = s2.w.slice(); bT = bD = s2.b;
+    st.correct = 0;
+    exam.forEach(function(c, n){ var a = st.net.predict(c) > .5 ? 1 : 0, ok = a === labelOf(c); if (ok) st.correct++; setMark(n, ok); });
+    finish(); lv = target; shown = 0;
+    if (flaskLoop) flaskLoop.redraw(); if (neuronLoop) neuronLoop.redraw();
+  }
+  /* el color ya recorrió las 3 dendritas: el cuerpo suma y responde con el predict real */
+  function arrive(it){
+    var net = st.net, z = net.bias - net.bias, i;
+    for (i = 0; i < 3; i++) z += it.c[i] * net.weights[i];
+    it.z = z; it.p = net.predict(it.c); it.a = it.p > .5 ? 1 : 0; it.ok = it.a === labelOf(it.c);
+    level = {z: z, a: 1.4}; charge = Math.max(charge, .25 + .3 * it.p); flash = Math.max(flash, .16);
+    lastCol = it.c; lastColT = .8;
+  }
+  /* la respuesta llega al terminal */
+  function emerge(it){
+    termFlash = 1; termTint = it.a;
+    if (it.kind === 'probe'){
+      ans = {a: it.a, p: it.p, ok: it.ok, c: it.c, t: 0, era: null, hold: 2.2}; it.dead = true; probeSay(it); return;
+    }
+    ans = {a: it.a, p: it.p, ok: it.ok, c: it.c, t: 0, era: null, hold: it.kind === 'exam' ? 1.3 : (it.d === FULL ? 2.6 : .8)};
+    if (it.kind === 'exam'){
+      setMark(it.i, it.ok); st.done++; if (it.ok) st.correct++;
+      target = st.correct / 12; labelShown = Math.round(st.correct / 12 * 100) + '%';
+      it.dead = true;
+      if (st.done >= 12) finish();
+    } else {
+      /* llega la corrección: la neurona ajusta cuánto cuenta cada entrada (pesos y sesgo) */
+      st.net.train(it.c, labelOf(it.c), LR); st.seen++;
+      setStatus('Neurona nueva · aprendiendo… ' + st.seen + '/' + st.k);
+      it.snap = snapNow(); it.dw = dwOf(it.snap); it.dws = lastDws; it.db = lastDb; ans.era = labelOf(it.c);
+      it.stage = 'back'; it.t = 0;
+    }
+  }
+  /* cuánto cambiaron de verdad los pesos y el sesgo en este paso (suma de |Δ|) */
+  function dwOf(sn){
+    var d = Math.abs(sn.b - st.pb), i;
+    lastDws = [0, 0, 0]; lastDb = d;
+    for (i = 0; i < 3; i++){ lastDws[i] = Math.abs(sn.w[i] - st.pw[i]); d += lastDws[i]; }
+    st.pw = sn.w.slice(); st.pb = sn.b; return d;
+  }
+  /* «vida extra» al aprender: pop del cuerpo, anillo dorado, chispas y un «+»; más fuerte cuanto más cambian los pesos */
+  function celebrate(sv){
+    if (reduced || sv < .03 || celebs.length >= 3 || celebCool > 0) return;
+    celebCool = .22;
+    var n = 3 + Math.round(5 * sv), sp = [], k;
+    for (k = 0; k < n; k++) sp.push({a: -1.5708 + (Math.random() - .5) * 2, v: 36 + Math.random() * 56, r: 1.6 + Math.random() * 1.8});
+    celebs.push({t: 0, s: sv, sp: sp});
+  }
+  function advance(it, dt){
+    if (it.stage === 'in'){
+      it.t += dt / it.d.in;
+      if (it.t >= 1){ arrive(it); it.stage = 'out'; it.t = 0; }
+    } else if (it.stage === 'out'){
+      it.t += dt / it.d.out;
+      if (it.t >= 1) emerge(it);
+    } else {
+      it.t += dt / it.d.back;
+      if (!it.snapped && it.t >= .4){ it.snapped = true; wT = it.snap.w; bT = it.snap.b; flash = Math.max(flash, .15); celebrate(Math.min(1, it.dw / .5)); }
+      if (it.t >= 1) it.dead = true;
+    }
+  }
+  /* probar un color concreto: mismo camino que el examen, predict real, sin corrección ni cambios */
+  var pdot = document.getElementById('pdot');
+  function hexRgb(h){ return [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255]; }
+  function probeSay(it){
+    var rule = labelOf(it.c) ? 'claro' : 'oscuro', she = it.a ? 'claro' : 'oscuro';
+    var t = 'Tú dirías: ' + rule + ' · Ella dice: ' + she + (it.ok ? ' ✓' : ' ✗');
+    setStatus(t); say(t + (it.ok ? '. Acertó.' : '. Se equivocó.'));
+  }
+  function probe(hex){
+    pdot.style.background = hex;
+    if (st.phase === 'feed' || st.phase === 'review' || st.phase === 'settle' || st.phase === 'exam'){ setStatus('Espera a que termine el examen para probar tu color'); return; }
+    if (!libReady()){ setStatus('Preparando la neurona…'); return; }
+    if (!st.net){
+      st.net = newNeuron(); var s3 = snapNow(); wT = s3.w.slice(); wD = s3.w.slice(); bT = bD = s3.b;
+      setStatus('Neurona nueva, sin enseñarle nada'); if (codeApi) codeApi.set(0, s3.w);
+    }
+    var c = hexRgb(hex); setLeg('exam'); if (codeApi) codeApi.probe(c);
+    if (reduced){
+      var pr = st.net.predict(c), it2 = {c: c, p: pr, a: pr > .5 ? 1 : 0};
+      it2.ok = it2.a === labelOf(c); swCol = c; swT = 99; level = {z: c[0] * st.net.weights[0] + c[1] * st.net.weights[1] + c[2] * st.net.weights[2], a: 99}; ans = {a: it2.a, p: pr, ok: it2.ok, c: c, t: 0, era: null, hold: 99}; probeSay(it2);
+      if (neuronLoop) neuronLoop.redraw(); return;
+    }
+    items.push({kind: 'probe', c: c, i: 0, d: EXAMD, stage: 'in', t: 0, p: 0, a: 0, ok: false, z: 0, dead: false}); swCol = c; swT = 1.6;
+    setStatus('Probando tu color…');
+  }
+  [['#f5d742', 'amarillo'], ['#1f2f7a', 'azul marino'], ['#f080b8', 'rosa'], ['#14532d', 'verde oscuro'], ['#8a8a8a', 'gris'], ['#e8742a', 'naranja']].forEach(function(q){
+    var b = document.createElement('button'); b.type = 'button'; b.style.background = q[0]; b.title = 'Probar ' + q[1]; b.setAttribute('aria-label', 'Probar ' + q[1]);
+    b.addEventListener('click', function(){ probe(q[0]); });
+    document.getElementById('pq').appendChild(b);
+  });
+  /* selector propio: rejilla de tonos (columnas) por luminosidad (filas), con grises */
+  (function(){
+    var pop = document.getElementById('ppop'), pb = document.getElementById('pickc'), cells = [], isOpen = false, cur = 0;
+    function hsl(h, sa, l){
+      sa /= 100; l /= 100; var a = sa * Math.min(l, 1 - l);
+      function f(n){ var k = (n + h / 30) % 12, c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); return ('0' + Math.round(c * 255).toString(16)).slice(-2); }
+      return '#' + f(0) + f(8) + f(4);
+    }
+    var hues = [0, 35, 60, 130, 190, 230, 290], rows = [88, 70, 52, 36, 20], grays = [96, 74, 52, 30, 10];
+    rows.forEach(function(L, r){
+      for (var c = 0; c < 8; c++){
+        var hex = c < 7 ? hsl(hues[c], 80, L) : hsl(0, 0, grays[r]);
+        var b = document.createElement('button'); b.type = 'button'; b.style.background = hex; b.tabIndex = -1;
+        b.setAttribute('aria-label', 'Probar el color ' + hex); b.dataset.hex = hex;
+        b.addEventListener('click', function(){ var h = this.dataset.hex; setOpen(false, true); probe(h); });
+        pop.appendChild(b); cells.push(b);
+      }
+    });
+    function focusCell(i){ cur = Math.max(0, Math.min(cells.length - 1, i)); cells.forEach(function(c, k){ c.tabIndex = k === cur ? 0 : -1; }); cells[cur].focus(); }
+    function setOpen(v, back){
+      isOpen = v; pb.setAttribute('aria-expanded', v ? 'true' : 'false');
+      if (v){ pop.hidden = false; void pop.offsetWidth; pop.classList.add('open'); focusCell(cur); }
+      else { pop.classList.remove('open'); if (back) pb.focus({preventScroll: true}); }
+    }
+    pb.addEventListener('click', function(){ setOpen(!isOpen, true); });
+    pop.addEventListener('keydown', function(e){
+      var k = e.key, d = k === 'ArrowRight' ? 1 : k === 'ArrowLeft' ? -1 : k === 'ArrowDown' ? 8 : k === 'ArrowUp' ? -8 : 0;
+      if (d){ e.preventDefault(); focusCell(cur + d); }
+      else if (k === 'Home'){ e.preventDefault(); focusCell(0); } else if (k === 'End'){ e.preventDefault(); focusCell(cells.length - 1); }
+    });
+    document.addEventListener('keydown', function(e){ if (isOpen && e.key === 'Escape'){ e.stopPropagation(); setOpen(false, true); } }, true);
+    document.addEventListener('pointerdown', function(e){ if (isOpen && !pop.contains(e.target) && !pb.contains(e.target)) setOpen(false, false); });
+  })();
+  function tick(dt){
+    var i;
+    if (st.phase === 'feed'){
+      st.sp -= dt;
+      if (st.idx < st.k && st.sp <= 0 && (st.idx < FULLN ? !items.length : items.every(function(it){ return it.d !== FULL || it.stage === 'back'; }))){   /* mismo orden de entrenamiento que el código: ninguno adelanta a otro */
+        launch('train', st.set[st.idx], st.idx, st.idx < FULLN ? FULL : FAST); st.idx++; st.sp = st.idx < FULLN ? 0 : .17;
+      }
+      if (st.idx >= st.k && !items.length){ st.phase = 'review'; st.pass = 1; st.rt = .5; }
+    } else if (st.phase === 'review'){
+      st.rt -= dt;
+      if (st.rt <= 0){
+        st.pass++; trainPass(); flash = Math.max(flash, .5);
+        var sn = snapNow(); items.push({kind: 'rev', stage: 'back', t: 0, d: {back: .3}, snap: sn, dw: dwOf(sn), dws: lastDws, db: lastDb, dead: false});
+        setStatus('repasando… ' + st.pass + '/' + EPOCHS);
+        st.rt = .07;
+        if (st.pass >= EPOCHS) st.phase = 'settle';
+      }
+    } else if (st.phase === 'settle'){
+      if (!items.length) beginExam();
+    } else if (st.phase === 'exam'){
+      st.et -= dt;
+      if (st.eidx < 12 && st.et <= 0){
+        chips.forEach(function(c){ c.classList.remove('now'); }); chips[st.eidx].classList.add('now');
+        launch('exam', exam[st.eidx], st.eidx, EXAMD); st.eidx++; st.et = .85;
+      }
+    }
+    for (i = 0; i < items.length; i++) advance(items[i], dt);
+    items = items.filter(function(it){ return !it.dead; });
+    charge = Math.max(0, charge - dt * .9); if (charge > 1.2) charge = 1.2;
+    flash = Math.max(0, flash - dt * 1.6); termFlash = Math.max(0, termFlash - dt * 1.3);
+    lastColT = Math.max(0, lastColT - dt * .9); swT = Math.max(0, swT - dt * .6);
+    level.a = Math.max(0, level.a - dt * .55);
+    celebCool = Math.max(0, celebCool - dt);
+    for (i = celebs.length - 1; i >= 0; i--){ celebs[i].t += dt; if (celebs[i].t > 1.1) celebs.splice(i, 1); }
+    if (ans){ ans.t += dt; if (ans.t > ans.hold) ans = null; }
+  }
+
+  /* ---- la neurona: EXACTAMENTE 3 dendritas (rojo, verde, azul), un cuerpo, un axón y un terminal ---- */
+  var W = 640, H = 420, S = {x: 300, y: 210, r: 44}, SW = {x: 38, y: 210, r: 19};
+  var WMAX = 6, GMIN = -1.5, GMAX = 7;
+  var CH = [[255, 96, 84], [96, 214, 112], [104, 152, 255]], CHN = ['rojo', 'verde', 'azul'];
+  function chc(i, a){ return 'rgba(' + CH[i][0] + ',' + CH[i][1] + ',' + CH[i][2] + ',' + a + ')'; }
+  function lc(a, b, f){ return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]; }
+  function rgb(c, a){ return 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + a + ')'; }
+  var DARK = [22, 34, 78], LIGHT = [255, 238, 176], NEUT = [176, 168, 140];
+  var seed = 11;
+  function rnd(){ seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  function bez(p0, p1, p2, p3, t){
+    var u = 1 - t, a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
+    return [a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0], a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1]];
+  }
+  var defs = [
+    {tip: [128, 66],  c1: [196, 62],  c2: [232, 128], a: -2.45},
+    {tip: [130, 214], c1: [190, 228], c2: [246, 200], a: 3.1416},
+    {tip: [128, 354], c1: [196, 358], c2: [232, 292], a: 2.45}
+  ];
+  var N = 40;
+  defs.forEach(function(d){
+    var end = [S.x + Math.cos(d.a) * S.r * .85, S.y + Math.sin(d.a) * S.r * .85];
+    d.pts = [];
+    for (var i = 0; i < N; i++) d.pts.push(bez(d.tip, d.c1, d.c2, end, i / (N - 1)));
+    d.br = [];
+    [11, 22].forEach(function(k){   /* ramitas cortas: son parte de la dendrita, no entradas nuevas */
+      var p = d.pts[k], q = d.pts[k + 2], ang = Math.atan2(q[1] - p[1], q[0] - p[0]);
+      var side = rnd() < .5 ? -1 : 1, a2 = ang + side * (.7 + rnd() * .5), len = 14 + rnd() * 14;
+      var e = [p[0] + Math.cos(a2) * len, p[1] + Math.sin(a2) * len];
+      var c = [p[0] + Math.cos(a2 + side * .35) * len * .55, p[1] + Math.sin(a2 + side * .35) * len * .55];
+      d.br.push({p: p, c: c, e: e});
+    });
+  });
+  var AX = [], AN = 60, AXEND = 462;
+  for (var ii = 0; ii < AN; ii++){
+    var f = ii / (AN - 1), x = S.x + S.r * .9 + f * (AXEND - S.x - S.r * .9);
+    AX.push([x, 210 + Math.sin(f * 9) * 7 * Math.min(1, f * 3)]);
+  }
+  var endP = AX[AN - 1], term = [endP[0] + 9, endP[1]];
+  var view = {s: 1, ox: 0, oy: 0};
+  function fit(w, h){ var s = Math.min(w / W, h / H); view.s = s; view.ox = (w - W * s) / 2; view.oy = (h - H * s) / 2; }
+  function fs(n){ return Math.min(n * 1.7, Math.max(n, 10.5 / view.s)); }
+  function font(n){ return '600 ' + n + 'px "Inter Tight",system-ui,sans-serif'; }
+  function line(ctx, pts, wBase, taper, dashed){
+    for (var i = 1; i < pts.length; i++){
+      if (dashed && Math.floor(i / 3) % 2 === 1) continue;
+      ctx.lineWidth = wBase * (taper ? .35 + .65 * i / pts.length : 1);
+      ctx.beginPath(); ctx.moveTo(pts[i - 1][0], pts[i - 1][1]); ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke();
+    }
+  }
+  function glow(ctx, x, y, r, c0, c1){
+    var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, c0); g.addColorStop(1, c1);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+  }
+  function ptAt(pts, u){
+    var n = pts.length - 1, k = Math.max(0, Math.min(1, u)) * n, i0 = Math.floor(k), f = k - i0, a = pts[i0], b = pts[Math.min(n, i0 + 1)];
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+  }
+  function rrect(ctx, x, y, w, h, r){ ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
+
+  function drawNeuron(ctx, w, h, dt, t){
+    if (!reduced) tick(dt);
+    fit(w, h);
+    if (wD){
+      var ke = reduced ? 1 : Math.min(1, dt * 5), i;
+      for (i = 0; i < 3; i++) wD[i] += (wT[i] - wD[i]) * ke;
+      bD += (bT - bD) * ke;
+    }
+    if (level.a > 0) lvD += (level.z - lvD) * (reduced ? 1 : Math.min(1, dt * 5)); else lvD = GMIN;
+    shown += (Math.min(charge, 1) - shown) * Math.min(1, dt * 6);
+    var lit = shown * .6 + flash * .4, i, k;
+    ctx.save(); ctx.translate(view.ox, view.oy); ctx.scale(view.s, view.s);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    // color de entrada (swatch)
+    ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 1.3; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.arc(SW.x, SW.y, SW.r, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]);
+    if (swCol && swT > 0){
+      var sa = Math.min(1, swT * 2);
+      glow(ctx, SW.x, SW.y, SW.r * 2.2, css(swCol, .4 * sa), css(swCol, 0));
+      ctx.fillStyle = css(swCol, sa); ctx.beginPath(); ctx.arc(SW.x, SW.y, SW.r, 0, 6.2832); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,' + (.55 * sa) + ')'; ctx.lineWidth = 1.4; ctx.stroke();
+    }
+    ctx.font = font(fs(10.5)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(141,137,125,.95)';
+    ctx.fillText('color', SW.x, SW.y + SW.r + fs(10.5) * .9);
+
+    // ramitas (decoración de cada dendrita)
+    defs.forEach(function(d){
+      ctx.strokeStyle = 'rgba(201,162,39,.22)'; ctx.lineWidth = 1.2;
+      d.br.forEach(function(b){ ctx.beginPath(); ctx.moveTo(b.p[0], b.p[1]); ctx.quadraticCurveTo(b.c[0], b.c[1], b.e[0], b.e[1]); ctx.stroke(); });
+    });
+    // las 3 dendritas: grosor = |peso| real; trazo cortado = peso negativo («resta»)
+    defs.forEach(function(d, i){
+      var wv = wD ? wD[i] : null, wd = wv === null ? 4 : 1.6 + 9 * Math.min(1, Math.abs(wv) / WMAX), neg = wv !== null && wv < 0;
+      ctx.strokeStyle = chc(i, .07); line(ctx, d.pts, wd * 3, true, neg);
+      ctx.strokeStyle = 'rgba(214,176,52,.78)'; line(ctx, d.pts, wd, true, neg);
+      ctx.strokeStyle = chc(i, .34); line(ctx, d.pts, wd, true, neg);
+      glow(ctx, d.tip[0], d.tip[1], 9, chc(i, .5), chc(i, 0));
+      var ty = i === 2 ? d.tip[1] + fs(12) * 1.5 : d.tip[1] - fs(12) * 1.3;
+      ctx.font = font(fs(12)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = chc(i, .95); ctx.fillText(CHN[i], d.tip[0], ty);
+      if (neg){ ctx.font = font(fs(10.5)); ctx.fillStyle = 'rgba(242,239,230,.7)'; ctx.fillText('resta', d.tip[0], ty + (i === 2 ? 1 : -1) * fs(10.5) * 1.2); }
+    });
+    // axón único con su terminal único
+    ctx.strokeStyle = 'rgba(201,162,39,.08)'; line(ctx, AX, 14, false);
+    ctx.strokeStyle = 'rgba(190,155,40,.75)'; line(ctx, AX, 4, false);
+    ctx.strokeStyle = 'rgba(255,224,138,.12)'; ctx.lineWidth = 11;
+    [.25, .5, .75].forEach(function(f){
+      var kk = Math.round(f * (AN - 1)), a = AX[kk - 2], b = AX[kk + 2];
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+    });
+    ctx.strokeStyle = 'rgba(190,155,40,.7)'; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(endP[0], endP[1]); ctx.lineTo(term[0], term[1]); ctx.stroke();
+
+    // viaje de cada ejemplo
+    items.forEach(function(it){
+      var i, pos, u;
+      if (it.stage === 'in'){
+        u = it.t;
+        for (i = 0; i < 3; i++){
+          var v = it.c[i], al = .35 + .65 * v, rad = 3 + v * 7.5, tipP = defs[i].pts[0];
+          if (u < .3){
+            var e = u / .3; e = e * e * (3 - 2 * e);
+            var sx = SW.x + SW.r * .6;
+            pos = [sx + (tipP[0] - sx) * e, SW.y + (tipP[1] - SW.y) * e];
+            ctx.strokeStyle = chc(i, al * .4 * (1 - e * .4)); ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(sx, SW.y); ctx.lineTo(pos[0], pos[1]); ctx.stroke();
+          } else {
+            var fq = (u - .3) / .7, uu = fq * fq * (3 - 2 * fq) * .35 + fq * .65;
+            for (k = 3; k >= 1; k--){ var q = ptAt(defs[i].pts, uu - k * .035); glow(ctx, q[0], q[1], rad * .9, chc(i, .12 * (4 - k) * al), chc(i, 0)); }
+            pos = ptAt(defs[i].pts, uu);
+          }
+          glow(ctx, pos[0], pos[1], rad * 2.6, chc(i, al * .6), chc(i, 0));
+          ctx.fillStyle = chc(i, al); ctx.beginPath(); ctx.arc(pos[0], pos[1], rad, 0, 6.2832); ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,' + (al * .6) + ')'; ctx.lineWidth = 1.2; ctx.stroke();
+        }
+      } else if (it.stage === 'out'){
+        var m = Math.min(1, it.t * 1.4), cc = lc(NEUT, lc(DARK, LIGHT, it.p), m), hc = lc([200, 190, 150], it.a ? [255, 226, 140] : [100, 150, 255], m);
+        pos = ptAt(AX, it.t);
+        glow(ctx, pos[0], pos[1], 26, rgb(hc, .8), rgb(hc, 0));
+        ctx.fillStyle = rgb(cc, 1); ctx.beginPath(); ctx.arc(pos[0], pos[1], 6.5, 0, 6.2832); ctx.fill();
+        ctx.strokeStyle = it.a ? 'rgba(255,255,255,.85)' : 'rgba(130,175,255,.95)'; ctx.lineWidth = 1.8; ctx.stroke();
+      } else {
+        /* corrección: vuelve hacia atrás por el axón y las 3 dendritas, en azul frío */
+        u = it.t;
+        /* brillo y tamaño proporcionales al cambio REAL: axón ~ cambio del sesgo (error total), cada dendrita ~ |Δw_i|; máximo fijo */
+        var bp = [], DMAX = .1;
+        if (u < .4) bp.push([ptAt(AX, 1 - u / .4), Math.min(1, (it.db || 0) / DMAX)]);
+        else for (i = 0; i < 3; i++) bp.push([ptAt(defs[i].pts, 1 - (u - .4) / .6), Math.min(1, (it.dws ? it.dws[i] : 0) / DMAX)]);
+        bp.forEach(function(b){
+          var p = b[0], sv = b[1];
+          if (sv < .04) return;
+          glow(ctx, p[0], p[1], 8 + 16 * sv, 'rgba(120,175,255,' + (.2 + .65 * sv) + ')', 'rgba(106,167,255,0)');
+          ctx.fillStyle = 'rgba(220,235,255,' + (.4 + .6 * sv) + ')'; ctx.beginPath(); ctx.arc(p[0], p[1], 1.5 + 2.8 * sv, 0, 6.2832); ctx.fill();
+        });
+      }
+    });
+
+    // cuerpo (con el «pop» elástico al aprender)
+    var pop = 1, ci;
+    for (ci = 0; ci < celebs.length; ci++){ var cu = Math.min(1, celebs[ci].t / .7); pop = Math.max(pop, 1 + .15 * celebs[ci].s * Math.sin(cu * Math.PI)); }
+    var BR = S.r * pop;
+    glow(ctx, S.x, S.y, BR * (2 + lit * 2.2), 'rgba(255,205,90,' + (.1 + lit * .5) + ')', 'rgba(201,162,39,0)');
+    if (flash > .3) glow(ctx, S.x, S.y, BR * 4, 'rgba(180,215,255,' + (flash * .3) + ')', 'rgba(106,167,255,0)');
+    function bodyPath(){
+      ctx.beginPath();
+      for (var q2 = 0; q2 <= 64; q2++){
+        var th = q2 / 64 * 6.2832, rr = BR * (1 + .05 * Math.sin(th * 3 + t * .8) + .035 * Math.sin(th * 5 - t * .6) + lit * .05);
+        var px = S.x + Math.cos(th) * rr, py = S.y + Math.sin(th) * rr;
+        if (q2) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      }
+      ctx.closePath();
+    }
+    bodyPath();
+    var bg = ctx.createRadialGradient(S.x - 8, S.y - 10, 2, S.x, S.y, BR * 1.1);
+    bg.addColorStop(0, 'rgba(255,' + (215 + lit * 30 | 0) + ',' + (130 + lit * 80 | 0) + ',' + (.55 + lit * .45) + ')');
+    bg.addColorStop(.6, 'rgba(' + (150 + lit * 90 | 0) + ',' + (110 + lit * 70 | 0) + ',25,' + (.5 + lit * .4) + ')');
+    bg.addColorStop(1, 'rgba(60,42,8,.85)');
+    ctx.fillStyle = bg; ctx.fill();
+    // el cuerpo es un recipiente: se llena hasta «lo que llega» (suma de las 3 entradas por su peso)
+    // y una línea dorada marca dónde la respuesta pasa a «claro» (el umbral real de predict > 0.5, o sea -sesgo)
+    var lineY = 0, haveLine = !!wD;
+    function fr(z){ return Math.max(.03, Math.min(.97, (z - GMIN) / (GMAX - GMIN))); }
+    function yAt(f){ return S.y + BR - f * 2 * BR; }
+    if (haveLine){
+      var fl = Math.max(.07, Math.min(.93, fr(-bD))), fz = fr(lvD), above = lvD > -bD;
+      if (above) fz = Math.max(fz, fl + .04); else fz = Math.min(fz, fl - .04);
+      lineY = yAt(fl);
+      ctx.save(); bodyPath(); ctx.clip();
+      var la = Math.min(1, level.a), x;
+      if (la > 0){
+        var yz = yAt(fz);
+        ctx.beginPath(); ctx.moveTo(S.x - BR - 4, S.y + BR + 4);
+        for (x = S.x - BR - 4; x <= S.x + BR + 4; x += 4) ctx.lineTo(x, yz + Math.sin(x * .13 + t * 3) * 2.2);
+        ctx.lineTo(S.x + BR + 4, S.y + BR + 4); ctx.closePath();
+        var lg = ctx.createLinearGradient(0, yz, 0, S.y + BR);
+        if (above){ lg.addColorStop(0, 'rgba(255,240,170,.95)'); lg.addColorStop(1, 'rgba(255,190,70,.85)'); }
+        else { lg.addColorStop(0, 'rgba(165,200,255,.92)'); lg.addColorStop(1, 'rgba(60,100,215,.85)'); }
+        ctx.globalAlpha = la; ctx.fillStyle = lg; ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.4; ctx.beginPath();
+        for (x = S.x - BR - 4; x <= S.x + BR + 4; x += 4){ var yy = yz + Math.sin(x * .13 + t * 3) * 2.2; if (x > S.x - BR - 4) ctx.lineTo(x, yy); else ctx.moveTo(x, yy); }
+        ctx.stroke(); ctx.globalAlpha = 1;
+      }
+      ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 1.6; ctx.shadowColor = '#c9a227'; ctx.shadowBlur = 8; ctx.beginPath();
+      for (x = S.x - BR - 4; x <= S.x + BR + 4; x += 4){ var yl2 = lineY + Math.sin(x * .2 + t * 1.5) * 1.6; if (x > S.x - BR - 4) ctx.lineTo(x, yl2); else ctx.moveTo(x, yl2); }
+      ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+    bodyPath();
+    ctx.strokeStyle = 'rgba(255,224,138,' + (.45 + lit * .5) + ')'; ctx.lineWidth = 2; ctx.stroke();
+    glow(ctx, S.x + 4, S.y + 2, 12, 'rgba(255,250,230,' + (.2 + lit * .5) + ')', 'rgba(255,224,138,0)');
+    if (lastCol && lastColT > 0) glow(ctx, S.x, S.y, S.r * .95, css(lastCol, .6 * lastColT), css(lastCol, 0));
+
+    for (var r = ripples.length - 1; r >= 0; r--){
+      var rp = ripples[r]; rp.t += dt;
+      if (rp.t > 1){ ripples.splice(r, 1); continue; }
+      ctx.strokeStyle = (rp.c ? 'rgba(120,175,255,' : 'rgba(160,200,255,') + (1 - rp.t) * .7 + ')'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(rp.x, rp.y, 6 + rp.t * 34, 0, 6.2832); ctx.stroke();
+    }
+
+    // celebración al aprender: anillo dorado, chispas y un «+» (más fuertes cuanto más cambian los pesos)
+    celebs.forEach(function(c){
+      var u = c.t, fade = Math.max(0, 1 - u / 1.05);
+      ctx.strokeStyle = 'rgba(255,214,100,' + (fade * (.35 + .6 * c.s)) + ')'; ctx.lineWidth = 1 + 3 * fade * c.s;
+      ctx.beginPath(); ctx.arc(S.x, S.y, S.r + u * (50 + 40 * c.s), 0, 6.2832); ctx.stroke();
+      c.sp.forEach(function(sk){
+        var d = S.r + sk.v * u, px = S.x + Math.cos(sk.a) * d, py = S.y + Math.sin(sk.a) * d;
+        glow(ctx, px, py, sk.r * 4, 'rgba(255,214,100,' + (fade * .6) + ')', 'rgba(255,214,100,0)');
+        ctx.fillStyle = 'rgba(255,244,190,' + fade + ')'; ctx.beginPath(); ctx.arc(px, py, sk.r * (1 - u * .4), 0, 6.2832); ctx.fill();
+      });
+      if (c.s > .12){
+        ctx.font = font(fs(12 + 10 * c.s)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.shadowColor = '#c9a227'; ctx.shadowBlur = 8; ctx.fillStyle = 'rgba(255,230,140,' + fade + ')';
+        ctx.fillText('+', S.x, S.y - S.r - 8 - u * 34); ctx.shadowBlur = 0;
+      }
+    });
+
+    // etiqueta de la línea: a partir de aquí, claro
+    if (haveLine){
+      var lf = Math.min(13, fs(10.5)), lx = S.x + S.r + 12, ly = lineY;
+      if (Math.abs(ly - S.y) < 18) ly = ly <= S.y ? S.y - 24 : S.y + 26;
+      var ex = S.x + Math.sqrt(Math.max(0, S.r * S.r - (lineY - S.y) * (lineY - S.y)));
+      ctx.strokeStyle = 'rgba(255,224,138,.5)'; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
+      ctx.beginPath(); ctx.moveTo(ex, lineY); ctx.lineTo(lx - 3, ly); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = font(lf); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,224,138,.92)';
+      ctx.fillText('a partir de aquí: claro', lx, ly);
+      if (level.a > 0 && lvD > GMAX){ ctx.textAlign = 'center'; ctx.fillText('▲', S.x, S.y - S.r - 6); }
+    }
+
+    // salida: UN solo terminal, un bulbo luminoso que toma el color de la respuesta
+    var bx0 = term[0], by0 = term[1], tx = bx0 + 18, al2 = ans ? Math.max(0, Math.min(1, ans.t * 6, (ans.hold - ans.t) * 3)) : 0;
+    glow(ctx, bx0, by0, 12, 'rgba(255,224,138,.25)', 'rgba(255,224,138,0)');
+    ctx.fillStyle = 'rgba(190,155,40,.7)'; ctx.beginPath(); ctx.arc(bx0, by0, 5, 0, 6.2832); ctx.fill();
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    if (ans && al2 > 0){
+      var warm = ans.a, br = 8 + termFlash * 3, word = warm ? 'claro' : 'oscuro';
+      ctx.globalAlpha = al2;
+      if (warm){
+        glow(ctx, bx0, by0, 30 + termFlash * 8, 'rgba(255,230,150,.85)', 'rgba(255,200,80,0)');
+        var wg = ctx.createRadialGradient(bx0 - 2, by0 - 2, 1, bx0, by0, br);
+        wg.addColorStop(0, '#fffbe6'); wg.addColorStop(1, '#ffd45a');
+        ctx.fillStyle = wg; ctx.beginPath(); ctx.arc(bx0, by0, br, 0, 6.2832); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.5; ctx.stroke();
+      } else {
+        glow(ctx, bx0, by0, 24 + termFlash * 6, 'rgba(70,110,230,.55)', 'rgba(60,100,220,0)');
+        var dg = ctx.createRadialGradient(bx0, by0, 1, bx0, by0, br);
+        dg.addColorStop(0, '#070b1c'); dg.addColorStop(1, '#1b2c64');
+        ctx.fillStyle = dg; ctx.beginPath(); ctx.arc(bx0, by0, br, 0, 6.2832); ctx.fill();
+        ctx.strokeStyle = 'rgba(125,175,255,.95)'; ctx.lineWidth = 2; ctx.stroke();
+      }
+      var f1 = fs(17); ctx.font = font(f1);
+      ctx.shadowColor = warm ? '#ffd45a' : '#5b8cff'; ctx.shadowBlur = 14; ctx.fillStyle = warm ? '#fff3c4' : '#c4dcff';
+      ctx.fillText(word, tx, by0); ctx.shadowBlur = 0;
+      var ww = ctx.measureText(word).width; ctx.font = font(fs(13));
+      ctx.fillStyle = ans.ok ? (warm ? '#ffe9a0' : '#8fd0ff') : '#ff6a55'; ctx.fillText(ans.ok ? '✓' : '✗', tx + ww + 7, by0);
+      if (ans.era !== null){
+        ctx.font = font(fs(12)); ctx.shadowColor = '#5b8cff'; ctx.shadowBlur = 8; ctx.fillStyle = 'rgba(150,195,255,1)';
+        ctx.fillText('era ' + (ans.era ? 'claro' : 'oscuro'), tx, by0 + f1 * .95 + fs(12) * .8); ctx.shadowBlur = 0;
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (!ans || al2 < 1){
+      var f2 = fs(14); ctx.font = font(f2); ctx.globalAlpha = 1 - al2;
+      var wc = ctx.measureText('claro').width, ws = ctx.measureText(' / ').width;
+      ctx.fillStyle = 'rgba(255,224,138,.45)'; ctx.fillText('claro', tx, by0);
+      ctx.fillStyle = 'rgba(141,137,125,.5)'; ctx.fillText(' / ', tx + wc, by0);
+      ctx.fillStyle = 'rgba(140,175,255,.5)'; ctx.fillText('oscuro', tx + wc + ws, by0);
+      ctx.globalAlpha = 1;
+    }
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
+  neuronLoop = createLoop(cv, {draw: drawNeuron});
+
+  /* ---- el frasco ---- */
+  var bubbles = [], specks = [], fr = mulberry(3);
+  for (var b = 0; b < 14; b++) bubbles.push({x: 40 + fr() * 120, y: 246 - fr() * 150, r: 1.5 + fr() * 3, s: 14 + fr() * 22, p: fr() * 6});
+  for (var sp = 0; sp < 26; sp++) specks.push({x: 34 + fr() * 132, y: 90 + fr() * 150, r: .8 + fr() * 1.8, p: fr() * 6, s: 3 + fr() * 6});
+  function mix(a, b, f){ return Math.round(a + (b - a) * f); }
+  function flaskPath(){
+    var p = new Path2D();
+    p.moveTo(80, 10); p.lineTo(120, 10); p.lineTo(120, 62); p.bezierCurveTo(120, 90, 172, 100, 172, 150); p.lineTo(172, 196);
+    p.quadraticCurveTo(172, 246, 122, 246); p.lineTo(78, 246); p.quadraticCurveTo(28, 246, 28, 196); p.lineTo(28, 150);
+    p.bezierCurveTo(28, 100, 80, 90, 80, 62); p.closePath();
+    return p;
+  }
+  var fpath = null;
+  function flaskDraw(ctx, w, h, t, lv, labelShown){
+    if (!fpath) fpath = flaskPath();
+    var s = Math.min(w / 200, h / 260), ox = (w - 200 * s) / 2, oy = (h - 260 * s) / 2, q = lv;
+    ctx.save(); ctx.translate(ox, oy); ctx.scale(s, s);
+    // halo
+    glow(ctx, 100, 170, 140, 'rgba(255,210,100,' + (.04 + q * .3).toFixed(3) + ')', 'rgba(255,210,100,0)');
+    if (q > .6) glow(ctx, 100, 150, 120, 'rgba(120,175,255,' + ((q - .6) * .35).toFixed(3) + ')', 'rgba(106,167,255,0)');
+    // vidrio
+    ctx.fillStyle = 'rgba(255,255,255,.035)'; ctx.fill(fpath);
+    // líquido
+    ctx.save(); ctx.clip(fpath);
+    var top = 246 - 176 * lv, a = 3 + (1 - Math.abs(lv - .5)) * 2;
+    if (lv > .004){
+      ctx.beginPath(); ctx.moveTo(0, 260);
+      for (var x = 0; x <= 200; x += 5) ctx.lineTo(x, top + Math.sin(x * .07 + t * 2.2) * a + Math.sin(x * .13 - t * 1.4) * a * .5);
+      ctx.lineTo(200, 260); ctx.closePath();
+      var g = ctx.createLinearGradient(0, top - 6, 0, 246);
+      g.addColorStop(0, 'rgba(' + mix(130, 190, q) + ',' + mix(125, 225, q) + ',' + mix(105, 255, q) + ',' + (.62 + q * .33).toFixed(2) + ')');
+      g.addColorStop(.55, 'rgba(' + mix(95, 255, q) + ',' + mix(88, 214, q) + ',' + mix(70, 100, q) + ',' + (.72 + q * .26).toFixed(2) + ')');
+      g.addColorStop(1, 'rgba(' + mix(52, 201, q) + ',' + mix(48, 162, q) + ',' + mix(40, 39, q) + ',.95)');
+      ctx.fillStyle = g; ctx.fill();
+      // turbio: motitas flotando, se aclaran al subir el %
+      ctx.fillStyle = 'rgba(40,36,28,' + ((1 - q) * .5).toFixed(2) + ')';
+      specks.forEach(function(sk){
+        var yy = sk.y + Math.sin(t * .6 + sk.p) * sk.s;
+        if (yy > top + 6){ ctx.beginPath(); ctx.arc(sk.x + Math.cos(t * .5 + sk.p) * 5, yy, sk.r * (1.4 - q * .6), 0, 6.2832); ctx.fill(); }
+      });
+      // luminoso: burbujas
+      if (q > .3){
+        bubbles.forEach(function(bb){
+          var yy = 246 - ((bb.y2 = ((246 - bb.y) + t * bb.s) % 176));
+          if (yy > top + 4){ ctx.fillStyle = 'rgba(255,255,255,' + ((q - .3) * .6).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(bb.x + Math.sin(t * 1.3 + bb.p) * 4, yy, bb.r, 0, 6.2832); ctx.fill(); }
+        });
+        glow(ctx, 100, top + 14, 70, 'rgba(255,245,200,' + (q * .35).toFixed(2) + ')', 'rgba(255,230,150,0)');
+      }
+      // brillo de la superficie
+      ctx.strokeStyle = 'rgba(255,255,255,' + (.15 + q * .45).toFixed(2) + ')'; ctx.lineWidth = 1.6; ctx.beginPath();
+      for (var x2 = 0; x2 <= 200; x2 += 5){ var yy2 = top + Math.sin(x2 * .07 + t * 2.2) * a + Math.sin(x2 * .13 - t * 1.4) * a * .5; if (x2) ctx.lineTo(x2, yy2); else ctx.moveTo(x2, yy2); }
+      ctx.stroke();
+    }
+    ctx.restore();
+    // contorno y reflejo
+    ctx.strokeStyle = 'rgba(255,255,255,.3)'; ctx.lineWidth = 2.2; ctx.stroke(fpath);
+    ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(44, 150); ctx.lineTo(44, 200); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.18)'; rrect(ctx, 76, 4, 48, 9, 4); ctx.fill();
+    // número
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '600 40px "Inter Tight",system-ui,sans-serif';
+    ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 8;
+    ctx.fillStyle = labelShown === '?' ? 'rgba(242,239,230,.4)' : '#fff';
+    ctx.fillText(labelShown, 100, 176);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+  SH.flaskDraw = flaskDraw;
+  flaskLoop = createLoop(fcv, {draw: function(ctx, w, h, dt, t){
+    lv += (target - lv) * (reduced ? 1 : Math.min(1, dt * 2.6));
+    flaskDraw(ctx, w, h, t, lv, labelShown);
+  }});
+
+  /* ---- código fuente en vivo: el mismo código que hace esta pantalla, con los ejemplos reales del conjunto activo ---- */
+  (function(){
+    var pre = document.getElementById('ccode'), btn = document.getElementById('cbtn'), panel = document.getElementById('cpanel'), wrap = document.getElementById('ecode'), copy = document.getElementById('ccopy');
+    var cs = {k: null, w0: null, probe: null, open: {ej: false, ex: false}, mode: 'learn', cur: null};
+    var LIM = 8, SHOW = 3;
+    function f2(x){ return x.toFixed(2); }
+    function cl(c){ return '{ r: ' + f2(c[0]) + ', g: ' + f2(c[1]) + ', b: ' + f2(c[2]) + ', claro: ' + (labelOf(c) ? 'true' : 'false') + ' }'; }
+    /*SNIP-START*/
+    function buildLines(cs){
+      var L = [], k = cs.k, set = k ? all.slice(0, k) : [];
+      function add(t, o){ var l = o || {}; l.t = t; L.push(l); return l; }
+      function list(name, grp, arr){
+        add('const ' + name + ' = [');
+        var coll = arr.length > LIM && !cs.open[grp];
+        arr.forEach(function(c, i){
+          add('  ' + cl(c) + ',', {sw: c, grp: grp, i: i, hid: coll && i >= SHOW});
+          if (coll && i === SHOW - 1) add('  // … y ' + (arr.length - SHOW) + ' más', {more: grp, disp: true});
+        });
+        if (arr.length > LIM && cs.open[grp]) add('  // mostrar menos', {less: grp, disp: true});
+        add('];');
+      }
+      add('import { NeuronN } from "@dniskav/neuron";'); add('');
+      if (k){ add('// ' + k + ' ejemplos (conjunto «' + k + '»)'); list('ejemplos', 'ej', set); }
+      else add('const ejemplos = [];   // todavía no le has enseñado nada');
+      add('');
+      add('const neurona = new NeuronN(3);   // 3 entradas: rojo, verde, azul');
+      if (cs.w0) add('neurona.weights = [' + cs.w0.join(', ') + '];   // con estos pesos nace la de esta pantalla');
+      add('');
+      add('// Aprender: responde y la corrigen (claro = 1, oscuro = 0)');
+      add('for (let repaso = 0; repaso < 40; repaso++)');
+      add('  for (const { r, g, b, claro } of ejemplos)');
+      add('    neurona.train([r, g, b], claro ? 1 : 0, 0.5);', {m: 'learn'});
+      add('');
+      add('// Examen: 12 colores nuevos, solo responde, nada cambia');
+      list('examen', 'ex', exam);
+      add('let aciertos = 0;');
+      add('for (const { r, g, b, claro } of examen) {');
+      add('  const p = neurona.predict([r, g, b]);', {m: 'exam'});
+      add('  const respuesta = p > 0.5 ? "claro" : "oscuro";', {m: 'exam'});
+      add('  if ((respuesta === "claro") === claro) aciertos++;');
+      add('}');
+      add('console.log(Math.round(aciertos / 12 * 100) + " %");');
+      if (cs.probe){
+        add(''); add('// Tu color: se prueba igual, sin corregir');
+        add('const tuyo = neurona.predict([' + cs.probe.map(f2).join(', ') + ']) > 0.5 ? "claro" : "oscuro";', {m: 'probe', sw: cs.probe});
+      }
+      return L;
+    }
+    /*SNIP-END*/
+    function rawText(){ return buildLines(cs).filter(function(l){ return !l.disp; }).map(function(l){ return l.t; }).join('\n'); }
+    function esc(x){ return x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function hi(line){
+      return esc(line).replace(/(\/\/.*$)|("[^"]*")|\b(import|from|const|for|let|of|true|false)\b|\b(\d+(?:\.\d+)?)\b|\b(train|predict|setWeights|setRandom|seededRandom)\b|\b(NeuronN|NetworkN|Adam)\b/g, function(m, c, s, k, n, f, t){
+        return c ? '<span class="c">' + m + '</span>' : s ? '<span class="s">' + m + '</span>' : k ? '<span class="k">' + m + '</span>' : n ? '<span class="n">' + m + '</span>' : f ? '<span class="f">' + m + '</span>' : '<span class="t">' + m + '</span>';
+      });
+    }
+    function render(){
+      var html = '';
+      buildLines(cs).forEach(function(l){
+        if (l.hid) return;
+        if (l.more || l.less){
+          html += '<button type="button" class="ln more" data-tog="' + (l.more || l.less) + '" aria-expanded="' + (l.less ? 'true' : 'false') + '">' + hi(l.t) + '</button>'; return;
+        }
+        html += '<span class="ln"' + (l.m ? ' data-m="' + l.m + '"' : '') + (l.grp ? ' data-g="' + l.grp + '" data-i="' + l.i + '"' : '') + '>' + (hi(l.t) || ' ') + (l.sw ? '<i class="sw" style="background:' + css(l.sw) + '"></i>' : '') + '</span>';
+      });
+      pre.innerHTML = html; applyHL();
+    }
+    function applyHL(){
+      Array.prototype.forEach.call(pre.querySelectorAll('.ln'), function(el){
+        el.classList.toggle('hl', el.getAttribute('data-m') === cs.mode);
+        el.classList.remove('cur');
+      });
+      if (cs.cur){
+        var el = pre.querySelector('.ln[data-g="' + cs.cur.g + '"][data-i="' + cs.cur.i + '"]') || pre.querySelector('.more[data-tog="' + cs.cur.g + '"]');
+        if (el) el.classList.add('cur');
+      }
+    }
+    pre.addEventListener('click', function(e){
+      var b = e.target.closest ? e.target.closest('[data-tog]') : null;
+      if (!b) return;
+      var g = b.getAttribute('data-tog'); cs.open[g] = !cs.open[g]; render();
+      var nb = pre.querySelector('[data-tog="' + g + '"]'); if (nb) nb.focus({preventScroll: true});
+    });
+    panelsApi.hi = hi; SH.hi = hi;
+    codeApi = {
+      set: function(k, w0){ cs.k = k; cs.w0 = w0 ? w0.slice() : null; cs.probe = null; cs.cur = null; cs.open = {ej: false, ex: false}; render(); },
+      probe: function(c){ cs.probe = c.slice(); cs.mode = 'probe'; render(); },
+      mode: function(m){ cs.mode = m; applyHL(); },
+      cur: function(g, i){ cs.cur = g ? {g: g, i: i} : null; applyHL(); }
+    };
+    render();
+    var open = false;
+    function setOpen(v, back){
+      open = v; btn.setAttribute('aria-expanded', v ? 'true' : 'false');
+      if (v){ if (panelsApi.brain) panelsApi.brain.close(); panel.hidden = false; void panel.offsetWidth; panel.classList.add('open'); panel.focus({preventScroll: true}); }
+      else { panel.classList.remove('open'); if (back) btn.focus({preventScroll: true}); }
+    }
+    panelsApi.code = {close: function(){ if (open) setOpen(false, false); }};
+    btn.addEventListener('click', function(){ setOpen(!open, true); });
+    document.addEventListener('keydown', function(e){ if (open && e.key === 'Escape'){ e.stopPropagation(); setOpen(false, true); } }, true);
+    document.addEventListener('pointerdown', function(e){ if (open && !wrap.contains(e.target)) setOpen(false, false); });
+    copy.addEventListener('click', function(){
+      var done = function(){ copy.classList.add('done'); setTimeout(function(){ copy.classList.remove('done'); }, 1400); };
+      try { navigator.clipboard.writeText(rawText()).then(done, function(){}); } catch (e) {}
+    });
+  })();
+
+  /* ---- lo que aprendió: los pesos y el sesgo REALES de la neurona, en vivo ---- */
+  (function(){
+    var btn = document.getElementById('bbtn'), panel = document.getElementById('bpanel'), wrap = document.getElementById('ecode'), copy = document.getElementById('bcopy');
+    var pre = document.getElementById('bcode'), noteEl = document.getElementById('bnote'), curEl = document.getElementById('bcur');
+    var rows = Array.prototype.slice.call(document.querySelectorAll('#bars .brow'));
+    var WM = 6, hi = panelsApi.hi, timer = 0, open = false, lastCode = '', lastText = '', view = null, cmp = null, crowEls = {};
+    var crowsEl = document.getElementById('crows'), phraseB = document.getElementById('bphrase');
+    var CHC = ['255,96,84', '96,214,112', '104,152,255', '255,224,138'], CHNN = ['rojo', 'verde', 'azul', 'línea'], NM = ['el rojo', 'el verde', 'el azul'];
+    function r4(x){ return Math.round(x * 10000) / 10000; }
+    /*BRAIN-START*/
+    function brainText(k, w, b, verdict){
+      return [
+        'import { NeuronN } from "@dniskav/neuron";', '',
+        k ? '// Lo que aprendió con el conjunto «' + k + '»' : '// Sin enseñarle nada: estos números son al azar',
+        'const aprendido = { pesos: [' + w.map(r4).join(', ') + '], sesgo: ' + r4(b) + ' };', '',
+        '// Ponérselo a una neurona nueva: ya sabe, sin entrenar',
+        'const neurona = new NeuronN(3);',
+        'neurona.weights = [...aprendido.pesos];',
+        'neurona.bias = aprendido.sesgo;',
+        'neurona.predict([0.90, 0.80, 0.40]) > 0.5 ? "claro" : "oscuro";   // → ' + verdict
+      ].join('\n');
+    }
+    /*BRAIN-END*/
+    /* los 8 estados, calculados con las mismas semillas y el mismo entrenamiento que la pantalla */
+    function computeCmp(){
+      if (cmp || !libReady()) return;
+      cmp = {};
+      [0].concat(SIZES).forEach(function(k){
+        var n = newNeuron(), set = all.slice(0, k), e, ok = 0;
+        for (e = 0; e < (k ? EPOCHS : 0); e++) set.forEach(function(c){ n.train(c, labelOf(c), LR); });
+        exam.forEach(function(c){ if ((n.predict(c) > .5 ? 1 : 0) === labelOf(c)) ok++; });
+        cmp[k] = {w: n.weights.slice(), b: n.bias, pct: Math.round(ok / 12 * 100)};
+        var d = cmp[k], vals = d.w.concat([d.b]), btn2 = document.createElement('button');
+        btn2.type = 'button'; btn2.className = 'crow'; btn2.setAttribute('aria-pressed', 'false');
+        var lab = k ? k + ' ejemplos' : 'sin enseñar';
+        btn2.title = lab + ': ' + vals.map(function(v, i){ return CHNN[i] + ' ' + (v < 0 ? '−' : '+') + Math.abs(v).toFixed(2); }).join(' · ') + ' · ' + d.pct + ' % de aciertos';
+        btn2.setAttribute('aria-label', btn2.title + '. Ver su código.');
+        btn2.innerHTML = '<span class="cl">' + (k ? k + ' ej.' : 'sin enseñar') + '</span><span class="cm" aria-hidden="true">' + vals.map(function(v, i){
+          var wd = Math.min(1, Math.abs(v) / WM) * 50;
+          return '<i class="' + (v < 0 ? 'n' : '') + '" style="--c:' + CHC[i] + ';top:' + (1 + i * 5) + 'px;width:' + wd + '%;left:' + (v >= 0 ? 50 : 50 - wd) + '%"></i>';
+        }).join('') + '</span><span class="cp">' + d.pct + ' %</span>';
+        btn2.addEventListener('click', function(){ view = (view === k ? null : k); lastText = ''; refresh(); });
+        crowsEl.appendChild(btn2); crowEls[k] = btn2;
+      });
+      /* frase basada en los números reales */
+      function topOf(k){ var w = cmp[k].w, t = 0; for (var i = 1; i < 3; i++) if (Math.abs(w[i]) > Math.abs(w[t])) t = i; return t; }
+      var tf = topOf(5), tm = topOf(34), txt = 'Sin enseñar, sus números son azar. ';
+      txt += tf !== tm ? 'Con 5 ejemplos lo que más pesa es ' + NM[tf] + '; con 34, ' + NM[tm] + '.' : 'Con pocos y con muchos ejemplos lo que más pesa es ' + NM[tm] + ', pero con muchos ejemplos pesa mucho más.';
+      phraseB.textContent = txt;
+    }
+    function setRow(i, v){
+      var el = rows[i], bar = el.querySelector('.bb'), wd = Math.min(1, Math.abs(v) / WM) * 50;
+      bar.style.width = wd + '%'; bar.style.left = (v >= 0 ? 50 : 50 - wd) + '%';
+      el.classList.toggle('neg', v < 0);
+      el.querySelector('.bv').textContent = v === null ? '–' : (v < 0 ? '−' : '+') + Math.abs(v).toFixed(2) + (v < 0 && i < 3 ? ' · resta' : '');
+    }
+    function refresh(){
+      var net = st.net, txt;
+      computeCmp();
+      Object.keys(crowEls).forEach(function(k){
+        var ke = +k, el = crowEls[k];
+        el.classList.toggle('tried', results[ke] !== undefined);
+        el.classList.toggle('cur', !!net && ke === (st.k || 0));
+        el.classList.toggle('sel', view === ke); el.setAttribute('aria-pressed', view === ke ? 'true' : 'false');
+      });
+      if (view !== null && cmp){
+        var dv = cmp[view], zv = r4(dv.b); [0, 1, 2].forEach(function(j){ zv += r4(dv.w[j]) * [.9, .8, .4][j]; });
+        txt = brainText(view, dv.w, dv.b, zv > 0 ? 'claro' : 'oscuro');
+        if (net){ var w0 = net.weights; for (var i0 = 0; i0 < 3; i0++) setRow(i0, w0[i0]); setRow(3, net.bias); }
+        if (txt !== lastText){ lastText = txt; pre.innerHTML = txt.split('\n').map(function(l){ return '<span class="ln">' + (hi(l) || ' ') + '</span>'; }).join(''); }
+        return;
+      }
+      if (!net){
+        rows.forEach(function(el){ el.querySelector('.bb').style.width = '0%'; el.querySelector('.bv').textContent = '–'; el.classList.remove('neg'); });
+        noteEl.textContent = 'Todavía no hay neurona: elige un conjunto o prueba un color.'; curEl.textContent = '';
+        txt = '// Elige un conjunto de ejemplos o prueba un color:\n// aquí verás los números que aprende.';
+      } else {
+        var w = net.weights, b = net.bias, trained = st.k > 0, i;
+        for (i = 0; i < 3; i++) setRow(i, w[i]);
+        setRow(3, b);
+        noteEl.textContent = trained ? '' : 'Aún no ha aprendido: estos números son al azar.';
+        curEl.textContent = '';
+        if (trained){
+          var ord = [0, 1, 2].sort(function(a, c){ return Math.abs(w[c]) - Math.abs(w[a]); }), top = ord[0], nm = ['el rojo', 'el verde', 'el azul'];
+          if (Math.abs(w[top]) > 0.15 && Math.abs(w[ord[1]]) < 0.85 * Math.abs(w[top])) curEl.textContent = 'Lo que más pesa en su decisión: ' + nm[top] + (w[top] < 0 ? ', pero para restar.' : '.');
+        }
+        var z = r4(b); [0, 1, 2].forEach(function(j){ z += r4(w[j]) * [.9, .8, .4][j]; });
+        txt = brainText(trained ? st.k : 0, w, b, z > 0 ? 'claro' : 'oscuro');
+      }
+      if (txt !== lastText){ lastText = txt; pre.innerHTML = txt.split('\n').map(function(l){ return '<span class="ln">' + (hi(l) || ' ') + '</span>'; }).join(''); }
+    }
+    function setOpen(v, back){
+      open = v; btn.setAttribute('aria-expanded', v ? 'true' : 'false');
+      if (v){
+        if (panelsApi.code) panelsApi.code.close();
+        panel.hidden = false; refresh(); void panel.offsetWidth; panel.classList.add('open'); panel.focus({preventScroll: true});
+        timer = setInterval(refresh, 100);
+      } else {
+        panel.classList.remove('open'); clearInterval(timer); if (back) btn.focus({preventScroll: true});
+      }
+    }
+    panelsApi.brain = {close: function(){ if (open) setOpen(false, false); }};
+    btn.addEventListener('click', function(){ setOpen(!open, true); });
+    document.addEventListener('keydown', function(e){ if (open && e.key === 'Escape'){ e.stopPropagation(); setOpen(false, true); } }, true);
+    document.addEventListener('pointerdown', function(e){ if (open && !wrap.contains(e.target)) setOpen(false, false); });
+    copy.addEventListener('click', function(){
+      var done = function(){ copy.classList.add('done'); setTimeout(function(){ copy.classList.remove('done'); }, 1400); };
+      try { navigator.clipboard.writeText(lastText).then(done, function(){}); } catch (e) {}
+    });
+  })();
+
+  /* esta pantalla puede ser más alta que la ventana (móvil): la marcamos como activa al cruzar el centro */
+  (function(){
+    var io = new IntersectionObserver(function(en){ if (en[0].isIntersecting){ sec.classList.add('in'); setActive(sections.indexOf(sec)); } }, {root: main, rootMargin: '-45% 0px -45% 0px', threshold: 0});
+    io.observe(sec);
+  })();
+})();
+
+/* ---------- 2c. equipo: ni claro ni oscuro (NetworkN real: [3, k, 1]) ---------- */
+(function(){
+  var cv = document.getElementById('qneuron'), fcv = document.getElementById('qflask'), sec = document.getElementById('equipo');
+  var KS = [1, 2, 3], NTRAIN = 60, EPOCHS = 200, LR = .02, LO = .35, HI = .65, GAP = .04, FULLN = 2, CHUNK = 10;
+  var INIT_SEED = 3, TRAIN_SEED = 7, EXAM_SEED = 5;
+  var mulberry = SH.mulberry, css = SH.css, glow = SH.glow, ptAt = SH.ptAt, bez = SH.bez, rrect = SH.rrect, hi = SH.hi;
+  /* colores deterministas: «intermedio» = brillo entre LO y HI; un tercio oscuros, un tercio intermedios, un tercio claros */
+  function bri(c){ return .299 * c[0] + .587 * c[1] + .114 * c[2]; }
+  function zoneOf(c){ var y = bri(c); return y < LO ? 0 : y > HI ? 2 : 1; }
+  function labelOf(c){ return zoneOf(c) === 1 ? 1 : 0; }
+  function q2(c){ return [Math.round(c[0] * 100) / 100, Math.round(c[1] * 100) / 100, Math.round(c[2] * 100) / 100]; }
+  function nearEdge(c, gap){ var y = bri(c); return Math.abs(y - LO) < gap || Math.abs(y - HI) < gap; }
+  function makeTrain(seed, n){
+    var r = mulberry(seed), out = [], cnt = [0, 0, 0], g = 0;
+    while (out.length < n && g++ < 1e6){ var c = q2([r(), r(), r()]); if (nearEdge(c, GAP)) continue; var z = zoneOf(c); if (cnt[z] >= n / 3) continue; cnt[z]++; out.push(c); }
+    return out;
+  }
+  function makeExam(seed, n){
+    var r = mulberry(seed), b = [[], [], []], g = 0, i, o = [];
+    while ((b[0].length < n / 3 || b[1].length < n / 3 || b[2].length < n / 3) && g++ < 1e6){ var c = q2([r(), r(), r()]); if (nearEdge(c, GAP * 1.5)) continue; var z = zoneOf(c); if (b[z].length < n / 3) b[z].push(c); }
+    for (i = 0; i < n / 3; i++) o.push(b[1][i], b[0][i], b[2][i]);
+    return o;
+  }
+  var train = makeTrain(TRAIN_SEED, NTRAIN), exam = makeExam(EXAM_SEED, 12);
+  /* respaldo con la misma matemática que NetworkN + Adam (por si el CDN falla) */
+  function FNeuron(nIn, rnd){
+    var lim = Math.sqrt(1 / nIn), i; this.weights = [];
+    for (i = 0; i < nIn; i++) this.weights.push((rnd() * 2 - 1) * lim);
+    this.bias = 0; this.m = new Array(nIn + 1).fill(0); this.v = new Array(nIn + 1).fill(0); this.t = 0;
+  }
+  FNeuron.prototype.predict = function(x){ var s = this.bias, i; for (i = 0; i < x.length; i++) s += x[i] * this.weights[i]; return 1 / (1 + Math.exp(-s)); };
+  FNeuron.prototype.update = function(grads, gb, lr){
+    var i, g, mh, vh; this.t++;
+    for (i = 0; i <= this.weights.length; i++){
+      g = i < this.weights.length ? grads[i] : gb;
+      this.m[i] = .9 * this.m[i] + .1 * g; this.v[i] = .999 * this.v[i] + .001 * g * g;
+      mh = this.m[i] / (1 - Math.pow(.9, this.t)); vh = this.v[i] / (1 - Math.pow(.999, this.t));
+      var d = lr * mh / (Math.sqrt(vh) + 1e-8);
+      if (i < this.weights.length) this.weights[i] += d; else this.bias += d;
+    }
+  };
+  function FNet(struct, rnd){
+    this.structure = struct; this.layers = [];
+    for (var l = 1; l < struct.length; l++){
+      var ns = []; for (var j = 0; j < struct[l]; j++) ns.push(new FNeuron(struct[l - 1], rnd));
+      this.layers.push({neurons: ns});
+    }
+  }
+  FNet.prototype.predict = function(x){
+    var cur = x.slice(); this.layers.forEach(function(L){ cur = L.neurons.map(function(n){ return n.predict(cur); }); }); return cur;
+  };
+  FNet.prototype.train = function(x, t, lr){
+    var act = [x.slice()], i, l;
+    for (l = 0; l < this.layers.length; l++){ var inp = act[l]; act.push(this.layers[l].neurons.map(function(n){ return n.predict(inp); })); }
+    var out = act[act.length - 1], g = out.map(function(p, k){ return (2 / out.length) * (t[k] - p); });
+    for (l = this.layers.length - 1; l >= 0; l--){
+      var L = this.layers[l], o = act[l + 1], inp2 = act[l];
+      var delta = g.map(function(v, k){ return v * o[k] * (1 - o[k]); });
+      var gPrev = inp2.map(function(_, j){ return L.neurons.reduce(function(s, n, k){ return s + delta[k] * n.weights[j]; }, 0); });
+      L.neurons.forEach(function(n, k){ n.update(inp2.map(function(v){ return delta[k] * v; }), delta[k], lr); });
+      g = gPrev;
+    }
+  };
+  function mseOf(){ return 0; }
+  FNet.prototype.setWeights = function(w){ var i = 0; this.layers.forEach(function(L){ L.neurons.forEach(function(n){ for (var j = 0; j < n.weights.length; j++) n.weights[j] = w[i++]; n.bias = w[i++]; }); }); };
+
+  /* la red real (librería) o, si el CDN falla, un respaldo con la misma matemática */
+  var lib = window.__NeuronLib || null, libFailed = false, pendingGo = null, noteEl = document.getElementById('qnote');
+  function libReady(){ return !!lib || libFailed; }
+  window.addEventListener('neuron-lib', function(){
+    lib = window.__NeuronLib || null; if (!lib) libFailed = true;
+    if (libFailed) noteEl.innerHTML = 'Estas neuronas aprenden de verdad, con la misma matemática que <b>@dniskav/neuron</b> (versión local).';
+    boot();
+  });
+  window.addEventListener('neuron-lib-fail', function(){
+    libFailed = true; noteEl.innerHTML = 'Estas neuronas aprenden de verdad, con la misma matemática que <b>@dniskav/neuron</b> (versión local).'; boot();
+  });
+  function structOf(k){ return k === 1 ? [3, 1] : [3, k, 1]; }
+  function newNet(k){
+    if (lib){
+      lib.setRandom(lib.seededRandom(INIT_SEED));
+      try { return new lib.NetworkN(structOf(k), {optimizer: function(){ return new lib.Adam(); }}); } finally { lib.setRandom(null); }
+    }
+    return new FNet(structOf(k), mulberry(INIT_SEED));
+  }
+  function snapNet(net){ var o = []; net.layers.forEach(function(L){ L.neurons.forEach(function(n){ o.push({w: n.weights.slice(), b: n.bias}); }); }); return o; }
+  function trainPass(net){ train.forEach(function(c){ net.train(c, [labelOf(c)], LR); }); }
+  function score(net){ var ok = 0, yes = 0; exam.forEach(function(c){ var a = net.predict(c)[0] > .5 ? 1 : 0; if (a === labelOf(c)) ok++; yes += a; }); return {ok: ok, yes: yes}; }
+  function r4(x){ return Math.round(x * 10000) / 10000; }
+
+  /* ---- especialidad medida en el examen: en qué colores se enciende cada neurona del medio (salida > 0.5) ---- */
+  var TAGFULL = {osc: 'se enciende con colores oscuros', cla: 'se enciende con colores claros', noc: 'se enciende con todo menos lo claro', noo: 'se enciende con todo menos lo oscuro', med: 'se enciende con colores intermedios', none: 'sin especialidad clara'};
+  var TAGSHORT = {osc: ['se enciende con', 'colores oscuros'], cla: ['se enciende con', 'colores claros'], noc: ['se enciende con', 'todo menos lo claro'], noo: ['se enciende con', 'todo menos lo oscuro'], med: ['se enciende con', 'colores intermedios'], none: ['sin especialidad', 'clara']};
+  var TAGMAP = {'1,0,0': 'osc', '0,0,1': 'cla', '1,1,0': 'noc', '0,1,1': 'noo', '0,1,0': 'med'};
+  function specTags(net){
+    if (net.layers.length < 2) return [];
+    return net.layers[0].neurons.map(function(n){
+      var f = [0, 0, 0];
+      exam.forEach(function(c){ if (n.predict(c) > .5) f[zoneOf(c)]++; });
+      var key = f.map(function(v){ return v >= 3 ? 1 : v <= 1 ? 0 : -1; }).join(',');
+      return {tag: TAGMAP[key] || 'none', f: f};
+    });
+  }
+  function fracText(f){ return 'oscuros ' + f[0] + '/4 · intermedios ' + f[1] + '/4 · claros ' + f[2] + '/4'; }
+  function kName(k){ return k === 1 ? '1 neurona sola' : k + ' neuronas + la que decide'; }
+
+  /* ---- interfaz ---- */
+  var goBtn = document.getElementById('qgo'), b0 = document.getElementById('q0'), minus = document.getElementById('qminus'), plus = document.getElementById('qplus'), countEl = document.getElementById('qcount');
+  var statusEl = document.getElementById('qstatus'), examEl = document.getElementById('qexam'), phraseEl = document.getElementById('qphrase'), jarsEl = document.getElementById('qjars'), liveEl = document.getElementById('qlive'), dotsEl = document.getElementById('qdots');
+  var legEl = document.getElementById('qeleg');
+  var jars = {}, chips = [], dots = [], results = {};
+  KS.forEach(function(k){
+    var j = document.createElement('div'); j.className = 'jar empty';
+    j.innerHTML = '<div class="jb"><div class="liq" style="--h:0%;--q:0"></div></div><span class="jl">' + k + '</span><span class="jp">–</span>';
+    j.title = kName(k); jarsEl.appendChild(j); jars[k] = j;
+  });
+  exam.forEach(function(c, i){
+    var d = document.createElement('div'); d.className = 'ex'; d.setAttribute('aria-label', 'Color ' + (i + 1) + ' del examen');
+    d.innerHTML = '<i style="background:' + css(c) + '"></i><span></span>'; examEl.appendChild(d); chips.push(d);
+  });
+  train.forEach(function(c){ var d = document.createElement('i'); d.style.background = css(c); dotsEl.appendChild(d); dots.push(d); });
+  function setStatus(t){ statusEl.textContent = t; }
+  function say(t){ liveEl.textContent = t; }
+  function setJar(k, pct){
+    var j = jars[k]; j.classList.remove('empty');
+    var l = j.querySelector('.liq'); l.style.setProperty('--h', pct + '%'); l.style.setProperty('--q', (pct / 100).toFixed(2));
+    j.querySelector('.jp').textContent = pct + '%'; j.title = kName(k) + ': ' + pct + ' % de aciertos';
+  }
+  function markJars(k){ Object.keys(jars).forEach(function(s){ jars[s].classList.toggle('on', +s === k); }); }
+  function setLeg(m){ legEl.className = 'eleg m-' + m; if (codeApi) codeApi.mode(m); }
+
+  /* ---- la red dibujada: lo que hay en el código es lo que se ve ---- */
+  var VW = 720, VH = 420, SWT = {x: 30, y: 210, r: 17}, AXEND = 566, NPTS = 40;
+  var CHN = ['rojo', 'verde', 'azul'], CHC = [[255, 96, 84], [96, 214, 112], [104, 152, 255]];
+  var NHUE = [[255, 170, 90], [110, 214, 196], [200, 150, 255]];
+  function chc(i, a){ return 'rgba(' + CHC[i][0] + ',' + CHC[i][1] + ',' + CHC[i][2] + ',' + a + ')'; }
+  function hue(j, a){ return 'rgba(' + NHUE[j][0] + ',' + NHUE[j][1] + ',' + NHUE[j][2] + ',' + a + ')'; }
+  function lc(a, b, f){ return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]; }
+  function rgb(c, a){ return 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + a + ')'; }
+  var DARK = [22, 34, 78], LIGHT = [255, 238, 176], NEUT = [176, 168, 140];
+  var WMAX = 16;
+  var seed = 11;
+  function rnd(){ seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  function curve(a, b, k1, k2){
+    var dx = b[0] - a[0], c1 = [a[0] + dx * (k1 || .45), a[1]], c2 = [b[0] - dx * (k2 || .45), b[1]], pts = [], i;
+    for (i = 0; i < NPTS; i++) pts.push(bez(a, c1, c2, b, i / (NPTS - 1)));
+    return pts;
+  }
+  function edge(n, a){ return [n.x + Math.cos(a) * n.r * .85, n.y + Math.sin(a) * n.r * .85]; }
+  var L = null, nodes = [], K = 1;
+  function buildLayout(k){
+    var tips = [[92, 84], [92, 210], [92, 336]], i, j, mids = [];
+    var F = {x: k === 1 ? 330 : 420, y: 210, r: k === 1 ? 44 : 38, fin: true, ph: 0};
+    if (k > 1){
+      var ys = k === 2 ? [128, 292] : [78, 210, 342], rr = k === 2 ? 32 : 27;
+      for (j = 0; j < k; j++) mids.push({x: 252, y: ys[j], r: rr, fin: false, ph: 1.7 * (j + 1), idx: j});
+    }
+    var ns = mids.concat([F]), first = k === 1 ? [F] : mids;
+    ns.forEach(function(n){
+      n.wD = null; n.wT = null; n.bD = 0; n.bT = 0; n.lvT = 0; n.lvD = 0; n.la = 0; n.shown = 0; n.charge = 0; n.flash = 0; n.h = 0; n.tint = null; n.tintT = 0; n.pop = 0;
+      n.range = n.fin ? (k === 1 ? [-1.5, 7] : [-30, 14]) : [-26, 14];
+    });
+    var ang1 = [Math.PI + .66, Math.PI, Math.PI - .66], conn1 = [];
+    for (i = 0; i < 3; i++){
+      conn1.push(first.map(function(n){ return curve(tips[i], edge(n, ang1[i])); }));
+    }
+    var conn2 = [];
+    if (k > 1){
+      var a2 = k === 2 ? [Math.PI + .5, Math.PI - .5] : [Math.PI + .72, Math.PI, Math.PI - .72];
+      mids.forEach(function(m, jj){ conn2.push(curve([m.x + m.r * .9, m.y], edge(F, a2[jj]), .5, .5)); });
+    }
+    var twigs = tips.map(function(tp, ii){
+      var pts = conn1[ii][0], out = [];
+      [5, 11].forEach(function(kk){
+        var p = pts[kk], q = pts[kk + 2], ang = Math.atan2(q[1] - p[1], q[0] - p[0]), side = rnd() < .5 ? -1 : 1, a = ang + side * (.7 + rnd() * .5), len = 12 + rnd() * 12;
+        var e = [p[0] + Math.cos(a) * len, p[1] + Math.sin(a) * len], c = [p[0] + Math.cos(a + side * .35) * len * .55, p[1] + Math.sin(a + side * .35) * len * .55];
+        out.push({p: p, c: c, e: e});
+      });
+      return out;
+    });
+    var AX = [], AN = 60, ii2;
+    for (ii2 = 0; ii2 < AN; ii2++){ var f = ii2 / (AN - 1), x = F.x + F.r * .9 + f * (AXEND - F.x - F.r * .9); AX.push([x, 210 + Math.sin(f * 9) * 7 * Math.min(1, f * 3)]); }
+    var endP = AX[AN - 1];
+    return {k: k, tips: tips, mids: mids, F: F, nodes: ns, first: first, conn1: conn1, conn2: conn2, twigs: twigs, AX: AX, AN: AN, term: [endP[0] + 9, endP[1]]};
+  }
+  function loadNodes(){
+    var sn = snapNet(st.net);
+    L.nodes.forEach(function(n, i){ n.wD = sn[i].w.slice(); n.wT = sn[i].w.slice(); n.bD = n.bT = sn[i].b; n.lvD = n.range[0]; n.la = 0; n.shown = 0; n.charge = 0; n.flash = 0; n.tint = null; n.tintT = 0; n.pop = 0; });
+  }
+
+  /* ---- director ---- */
+  /* Cada color es un «ejemplo» con etapas: in (se descompone y viaja por las tres entradas hasta las neuronas),
+     mid (las neuronas del medio avisan a la que decide), out (la respuesta sale por el único axón) y, solo al aprender,
+     back (llega la corrección y vuelve hacia atrás; ahí se llama a train y se leen los pesos reales). */
+  var st = {phase: 'idle', k: 1, net: null, trained: false}, items = [], ripples = [], celebs = [], celebCool = 0;
+  var ans = null, swCol = null, swT = 0, target = 0, lv = 0, labelShown = '?', codeApi = null, panelsApi = {}, flaskLoop, neuronLoop, tagT = 0;
+  var FULL = {in: .95, mid: .55, out: .5, back: 1.0}, EXAMD = {in: .7, mid: .4, out: .4};
+  var DREF1 = LR, DREFC = 2;   /* referencia del brillo: lo máximo que un paso (Adam) o un repaso de 10 vueltas puede mover un peso */
+
+  function setUI(){
+    countEl.textContent = kName(K);
+    cv.setAttribute('aria-label', 'Una red real: tres entradas, rojo, verde y azul' + (K === 1 ? ', una sola neurona' : ', ' + K + ' neuronas en el medio y una neurona que decide') + ' y una sola salida, intermedio o no. Al aprender, después de responder llega la corrección y las conexiones cambian de grosor; en el examen solo responde.');
+    minus.disabled = K <= KS[0]; plus.disabled = K >= KS[KS.length - 1];
+    markJars(K);
+  }
+  function resetMarks(){
+    chips.forEach(function(c, i){ c.className = 'ex'; c.lastChild.textContent = ''; c.setAttribute('aria-label', 'Color ' + (i + 1) + ' del examen'); });
+    dots.forEach(function(d){ d.className = ''; });
+  }
+  function fresh(k){
+    K = k; L = buildLayout(k);
+    st = {phase: 'idle', k: k, net: libReady() ? newNet(k) : null, trained: false, idx: 0, sp: 0, seen: 0, pass: 0, rt: 0, eidx: 0, et: 0, done: 0, correct: 0, yes: 0, prev: null, tags: null};
+    items = []; ripples = []; celebs = []; celebCool = 0; ans = null; swCol = null; swT = 0; target = 0; labelShown = '?'; tagT = 0;
+    phraseEl.innerHTML = ''; resetMarks(); setUI();
+    if (st.net){ loadNodes(); st.prev = snapNet(st.net); }
+    if (codeApi) codeApi.set(k, false);
+    setLeg('exam');
+    if (neuronLoop) neuronLoop.redraw(); if (flaskLoop) flaskLoop.redraw();
+  }
+  function setK(k){
+    k = Math.max(KS[0], Math.min(KS[KS.length - 1], k));
+    fresh(k); pendingGo = null;
+    setStatus(libReady() ? 'Equipo nuevo: ' + kName(k) + ' · pulsa «Enséñale»' : 'Preparando las neuronas…');
+    say('Ahora hay ' + kName(k) + '.');
+  }
+  function start(trainIt){
+    if (!libReady()){ pendingGo = trainIt; setStatus('Preparando las neuronas…'); return; }
+    pendingGo = null; fresh(K);
+    var k = K; st.trained = trainIt; if (codeApi) codeApi.set(k, trainIt);
+    setLeg(trainIt ? 'learn' : 'exam');
+    ripples.push({x: L.F.x, y: L.F.y, t: 0, c: 0});
+    say(trainIt ? 'Equipo nuevo, ' + kName(k) + '. Le enseñas ' + NTRAIN + ' colores.' : 'Equipo nuevo, sin enseñarle nada.');
+    if (reduced){ instant(); return; }
+    if (!trainIt){ setStatus('Equipo nuevo, sin enseñarle nada'); beginExam(); }
+    else { st.phase = 'feed'; setStatus('Equipo nuevo · aprendiendo… 0/' + NTRAIN); }
+  }
+  function boot(){
+    var go = pendingGo;
+    if (st.k !== K || !st.net) fresh(K);
+    if (go !== null && go !== undefined){ pendingGo = null; start(go); } else setStatus('Equipo nuevo: ' + kName(K) + ' · pulsa «Enséñale»');
+  }
+  function beginExam(){
+    var s1 = snapNet(st.net); L.nodes.forEach(function(n, i){ n.wT = s1[i].w.slice(); n.bT = s1[i].b; }); if (codeApi) codeApi.cur(null);
+    st.phase = 'exam'; st.eidx = 0; st.et = .6; st.done = 0; st.correct = 0; st.yes = 0; setLeg('exam');
+    setStatus(st.trained ? 'Examen · ¿intermedio? Solo responde, no cambia' : 'Examen sin haberle enseñado · ¿intermedio?');
+  }
+  function launch(kind, col, i, d){ if (codeApi) codeApi.cur(kind === 'train' ? 'ej' : 'ex', i); if (kind === 'train') dots[i].classList.add('now'); items.push({kind: kind, c: col, i: i, d: d, stage: 'in', t: 0, p: 0, a: 0, ok: false, dead: false}); swCol = col; swT = 1.6; }
+  function setMark(i, ok){ chips[i].classList.remove('now'); chips[i].classList.add(ok ? 'ok' : 'bad'); chips[i].lastChild.textContent = ok ? '✓' : '✗'; chips[i].setAttribute('aria-label', 'Color ' + (i + 1) + ' del examen: ' + (ok ? 'acertó' : 'falló')); }
+
+  function phraseFor(k, pct, tags, sc){
+    var m = '', extra = '';
+    if (!st.trained){
+      m = sc.yes === 0 ? 'Sin enseñarle nada, ' + (k === 1 ? 'dice «no» a todos los colores.' : 'el equipo dice «no» a todos los colores.') : 'Sin enseñarle nada, responde sin criterio: dice «intermedio» a ' + sc.yes + ' de 12.';
+      extra = 'No vio ningún ejemplo. Decir «no» a todo ya acierta 8 de 12.';
+    }
+    else if (k === 1){
+      m = sc.yes === 0 ? 'Una sola neurona solo traza una línea: no puede aislar el medio. Lo mejor que encuentra es decir «no» a todo y acertar ' + st.correct + ' de 12.' : 'Una sola neurona solo traza una línea: se atasca en un ' + pct + ' %.';
+      extra = 'Vio ' + NTRAIN + ' colores, ' + EPOCHS + ' veces cada uno. Decir «no» a todo ya acierta 8 de 12.';
+    } else {
+      var io = -1, ic = -1, fw = st.net.layers[1].neurons[0].weights;
+      tags.forEach(function(t, j){ if (t.tag === 'osc' && io < 0) io = j; if (t.tag === 'cla' && ic < 0) ic = j; });
+      if (pct >= 90 && io >= 0 && ic >= 0 && fw[io] < 0 && fw[ic] < 0){
+        m = 'Una neurona vigila lo oscuro y otra lo claro. La que decide dice «intermedio» cuando ninguna de las dos se enciende.';
+        tags.forEach(function(t, j){ if (j !== io && j !== ic) m += ' ' + (t.tag === 'none' ? 'La neurona ' + (j + 1) + ' no tiene especialidad clara.' : 'La neurona ' + (j + 1) + ' ayuda: ' + TAGFULL[t.tag] + '.'); });
+      }
+      else if (pct >= 90) m = 'Las neuronas se reparten el trabajo y juntas aciertan lo que una sola no podía.';
+      else m = 'Con este equipo aún se equivoca: llega a ' + pct + ' %.';
+      extra = tags.map(function(t, j){ return 'Neurona ' + (j + 1) + ': ' + TAGFULL[t.tag]; }).join(' · ');
+    }
+    return {m: m, extra: extra};
+  }
+  function finish(){
+    var pct = Math.round(st.correct / 12 * 100), k = st.k;
+    if (codeApi) codeApi.cur(null);
+    st.phase = 'done'; target = st.correct / 12; labelShown = pct + '%';
+    var sc = {ok: st.correct, yes: st.yes}, tags = specTags(st.net);
+    st.tags = tags; tagT = reduced ? 1 : 0;
+    if (st.trained){ results[k] = pct; setJar(k, pct); }
+    var p = phraseFor(k, pct, tags, sc);
+    phraseEl.innerHTML = p.m + '<small>' + p.extra + '</small>';
+    setStatus('Examen terminado · ' + st.correct + ' de 12');
+    say('Acertó ' + st.correct + ' de 12, un ' + pct + ' por ciento. ' + p.m + ' ' + (tags.length ? p.extra : ''));
+    fcv.setAttribute('aria-label', 'Frasco lleno al ' + pct + ' por ciento');
+  }
+  function instant(){
+    var i; if (st.trained) for (i = 0; i < EPOCHS; i++) trainPass(st.net);
+    var s2 = snapNet(st.net); L.nodes.forEach(function(n, j){ n.wT = s2[j].w.slice(); n.wD = s2[j].w.slice(); n.bT = n.bD = s2[j].b; });
+    st.correct = 0; st.yes = 0;
+    exam.forEach(function(c, n){ var a = st.net.predict(c)[0] > .5 ? 1 : 0, ok = a === labelOf(c); st.yes += a; if (ok) st.correct++; setMark(n, ok); });
+    finish(); lv = target;
+    if (flaskLoop) flaskLoop.redraw(); if (neuronLoop) neuronLoop.redraw();
+  }
+  function sig(z){ return 1 / (1 + Math.exp(-z)); }
+  function dotw(w, x){ var s = 0, i; for (i = 0; i < w.length; i++) s += w[i] * x[i]; return s; }
+  /* el color llegó a las neuronas: cada una suma lo que le llega por su peso y se enciende o no */
+  function arrive1(it){
+    var net = st.net; it.hs = [];
+    L.mids.forEach(function(m, j){
+      var nr = net.layers[0].neurons[j], z = dotw(nr.weights, it.c), h = nr.predict(it.c);
+      it.hs.push(h); m.lvT = z; m.la = 1.4; m.h = h; m.charge = Math.max(m.charge, .25 + .5 * h); m.flash = Math.max(m.flash, .16); m.tint = it.c; m.tintT = .8;
+    });
+  }
+  /* llega a la que decide: suma sus entradas, responde con el predict real */
+  function arriveF(it){
+    var net = st.net, nr = net.layers[net.layers.length - 1].neurons[0], x = K === 1 ? it.c : it.hs, z = dotw(nr.weights, x), F = L.F;
+    it.p = net.predict(it.c)[0]; it.a = it.p > .5 ? 1 : 0; it.ok = it.a === labelOf(it.c);
+    F.lvT = z; F.la = 1.4; F.charge = Math.max(F.charge, .25 + .3 * it.p); F.flash = Math.max(F.flash, .16);
+    if (K === 1){ F.tint = it.c; F.tintT = .8; }
+  }
+  function emerge(it){
+    var F = L.F; F.flash = Math.max(F.flash, .1); termFlash = 1; termTint = it.a;
+    if (it.kind === 'probe'){ ans = {a: it.a, p: it.p, ok: it.ok, c: it.c, t: 0, era: null, hold: 2.2}; it.dead = true; probeSay(it); return; }
+    ans = {a: it.a, p: it.p, ok: it.ok, c: it.c, t: 0, era: null, hold: it.kind === 'exam' ? 1.3 : 2.2};
+    if (it.kind === 'exam'){
+      setMark(it.i, it.ok); st.done++; if (it.ok) st.correct++; st.yes += it.a;
+      target = st.correct / 12; labelShown = Math.round(st.correct / 12 * 100) + '%';
+      it.dead = true;
+      if (st.done >= 12) finish();
+    } else {
+      /* llega la corrección: cada neurona ajusta cuánto cuenta cada entrada (pesos y sesgo) */
+      st.net.train(it.c, [labelOf(it.c)], LR); st.seen++;
+      setStatus('Equipo nuevo · aprendiendo… ' + st.seen + '/' + NTRAIN);
+      var sn = snapNet(st.net); it.snap = sn; it.chg = diffSv(st.prev, sn, DREF1); st.prev = sn; ans.era = labelOf(it.c);
+      it.stage = 'back'; it.t = 0;
+    }
+  }
+  var termFlash = 0, termTint = 0;
+  /* cuánto cambió de verdad cada peso y sesgo, como fracción de lo máximo que podía moverse */
+  function diffSv(prev, cur, dref){
+    var tot = 0, cnt = 0, out = cur.map(function(n, i){
+      var w = n.w.map(function(v, j){ var s = Math.min(1, Math.abs(v - prev[i].w[j]) / dref); tot += s; cnt++; return s; });
+      var b = Math.min(1, Math.abs(n.b - prev[i].b) / dref); tot += b; cnt++;
+      return {w: w, b: b};
+    });
+    return {n: out, mean: tot / cnt};
+  }
+  function celebrate(sv){
+    if (reduced || sv < .03 || celebs.length >= 3 || celebCool > 0) return;
+    celebCool = .22;
+    var n = 3 + Math.round(5 * sv), sp = [], k;
+    for (k = 0; k < n; k++) sp.push({a: -1.5708 + (Math.random() - .5) * 2, v: 36 + Math.random() * 56, r: 1.6 + Math.random() * 1.8});
+    celebs.push({t: 0, s: sv, sp: sp});
+  }
+  function advance(it, dt){
+    if (it.stage === 'in'){
+      it.t += dt / it.d.in;
+      if (it.t >= 1){ it.t = 0; if (K > 1){ arrive1(it); it.stage = 'mid'; } else { arriveF(it); it.stage = 'out'; } }
+    } else if (it.stage === 'mid'){
+      it.t += dt / it.d.mid;
+      if (it.t >= 1){ arriveF(it); it.stage = 'out'; it.t = 0; }
+    } else if (it.stage === 'out'){
+      it.t += dt / it.d.out;
+      if (it.t >= 1) emerge(it);
+    } else {
+      it.t += dt / (it.d.back || FULL.back);
+      if (!it.snapped && it.t >= .4){
+        it.snapped = true; var i;
+        L.nodes.forEach(function(n, j){ n.wT = it.snap[j].w.slice(); n.bT = it.snap[j].b; });
+        L.nodes.forEach(function(n, j){ var c = it.chg.n[j], s = 0; c.w.forEach(function(v){ s += v; }); s = (s + c.b) / (c.w.length + 1); n.flash = Math.max(n.flash, .15 + .5 * s); if (!n.fin) n.pop = Math.max(n.pop, s); });
+        L.F.flash = Math.max(L.F.flash, .15); celebrate(Math.min(1, it.chg.mean * 1.5));
+      }
+      if (it.t >= 1){ it.dead = true; if (it.kind === 'train'){ dots[it.i].classList.remove('now'); dots[it.i].classList.add('seen'); } }
+    }
+  }
+  /* probar un color concreto: mismo camino que el examen, predict real, sin corrección ni cambios */
+  var pdot = document.getElementById('qpdot');
+  function hexRgb(h){ return [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255]; }
+  function probeSay(it){
+    var rule = labelOf(it.c) ? 'intermedio' : 'no intermedio', she = it.a ? 'intermedio' : 'no intermedio';
+    var t = 'Tú dirías: ' + rule + ' · ' + (K === 1 ? 'Ella dice: ' : 'El equipo dice: ') + she + (it.ok ? ' ✓' : ' ✗');
+    setStatus(t); say(t + (it.ok ? '. Acertó.' : '. Se equivocó.'));
+  }
+  function probe(hex){
+    pdot.style.background = hex;
+    if (st.phase === 'feed' || st.phase === 'review' || st.phase === 'settle' || st.phase === 'exam'){ setStatus('Espera a que termine para probar tu color'); return; }
+    if (!libReady() || !st.net){ setStatus('Preparando las neuronas…'); return; }
+    var c = hexRgb(hex); setLeg('exam'); if (codeApi) codeApi.probe(c);
+    if (reduced){
+      var pr = st.net.predict(c)[0], it2 = {c: c, p: pr, a: pr > .5 ? 1 : 0}; it2.ok = it2.a === labelOf(c); swCol = c; swT = 99;
+      ans = {a: it2.a, p: pr, ok: it2.ok, c: c, t: 0, era: null, hold: 99}; probeSay(it2);
+      if (neuronLoop) neuronLoop.redraw(); return;
+    }
+    items.push({kind: 'probe', c: c, i: 0, d: EXAMD, stage: 'in', t: 0, p: 0, a: 0, ok: false, dead: false}); swCol = c; swT = 1.6;
+    setStatus('Probando tu color…');
+  }
+  [['#f5d742', 'amarillo'], ['#1f2f7a', 'azul marino'], ['#f080b8', 'rosa'], ['#14532d', 'verde oscuro'], ['#8a8a8a', 'gris'], ['#e8742a', 'naranja']].forEach(function(q){
+    var b = document.createElement('button'); b.type = 'button'; b.style.background = q[0]; b.title = 'Probar ' + q[1]; b.setAttribute('aria-label', 'Probar ' + q[1]);
+    b.addEventListener('click', function(){ probe(q[0]); });
+    document.getElementById('qpq').appendChild(b);
+  });
+  /* selector propio: rejilla de tonos (columnas) por luminosidad (filas), con grises */
+  (function(){
+    var pop = document.getElementById('qppop'), pb = document.getElementById('qpickc'), cells = [], isOpen = false, cur = 0;
+    function hsl(h, sa, l){
+      sa /= 100; l /= 100; var a = sa * Math.min(l, 1 - l);
+      function f(n){ var k = (n + h / 30) % 12, c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); return ('0' + Math.round(c * 255).toString(16)).slice(-2); }
+      return '#' + f(0) + f(8) + f(4);
+    }
+    var hues = [0, 35, 60, 130, 190, 230, 290], rows = [88, 70, 52, 36, 20], grays = [96, 74, 52, 30, 10];
+    rows.forEach(function(Lm, r){
+      for (var c = 0; c < 8; c++){
+        var hex = c < 7 ? hsl(hues[c], 80, Lm) : hsl(0, 0, grays[r]);
+        var b = document.createElement('button'); b.type = 'button'; b.style.background = hex; b.tabIndex = -1;
+        b.setAttribute('aria-label', 'Probar el color ' + hex); b.dataset.hex = hex;
+        b.addEventListener('click', function(){ var h = this.dataset.hex; setOpen(false, true); probe(h); });
+        pop.appendChild(b); cells.push(b);
+      }
+    });
+    function focusCell(i){ cur = Math.max(0, Math.min(cells.length - 1, i)); cells.forEach(function(c, k){ c.tabIndex = k === cur ? 0 : -1; }); cells[cur].focus(); }
+    function setOpen(v, back){
+      isOpen = v; pb.setAttribute('aria-expanded', v ? 'true' : 'false');
+      if (v){ pop.hidden = false; void pop.offsetWidth; pop.classList.add('open'); focusCell(cur); }
+      else { pop.classList.remove('open'); if (back) pb.focus({preventScroll: true}); }
+    }
+    pb.addEventListener('click', function(){ setOpen(!isOpen, true); });
+    pop.addEventListener('keydown', function(e){
+      var k = e.key, d = k === 'ArrowRight' ? 1 : k === 'ArrowLeft' ? -1 : k === 'ArrowDown' ? 8 : k === 'ArrowUp' ? -8 : 0;
+      if (d){ e.preventDefault(); focusCell(cur + d); }
+      else if (k === 'Home'){ e.preventDefault(); focusCell(0); } else if (k === 'End'){ e.preventDefault(); focusCell(cells.length - 1); }
+    });
+    document.addEventListener('keydown', function(e){ if (isOpen && e.key === 'Escape'){ e.stopPropagation(); setOpen(false, true); } }, true);
+    document.addEventListener('pointerdown', function(e){ if (isOpen && !pop.contains(e.target) && !pb.contains(e.target)) setOpen(false, false); });
+  })();
+  function pulse(steps, dref){   /* un «repaso»: se entrena de verdad y el pulso de vuelta lleva el cambio real */
+    var sn = snapNet(st.net), chg = diffSv(st.prev, sn, dref); st.prev = sn;
+    items.push({kind: 'rev', stage: 'back', t: 0, d: {back: .35}, snap: sn, chg: chg, dead: false});
+    L.F.flash = Math.max(L.F.flash, .4);
+  }
+  function tick(dt){
+    var i;
+    if (st.phase === 'feed'){
+      st.sp -= dt;
+      if (st.idx < FULLN && st.sp <= 0 && !items.length){ launch('train', train[st.idx], st.idx, FULL); st.idx++; st.sp = 0; }
+      if (st.idx >= FULLN && !items.length){
+        for (i = FULLN; i < NTRAIN; i++){ st.net.train(train[i], [labelOf(train[i])], LR); dots[i].classList.add('seen'); }
+        st.seen = NTRAIN; st.pass = 1; st.rt = .3; st.phase = 'review'; pulse(NTRAIN - FULLN, DREFC);
+        setStatus('repasando… 1/' + EPOCHS);
+      }
+    } else if (st.phase === 'review'){
+      st.rt -= dt;
+      if (st.rt <= 0){
+        var n = Math.min(CHUNK, EPOCHS - st.pass), e;
+        for (e = 0; e < n; e++) trainPass(st.net);
+        st.pass += n; pulse(n * NTRAIN, DREFC);
+        setStatus('repasando… ' + st.pass + '/' + EPOCHS);
+        st.rt = .13;
+        if (st.pass >= EPOCHS) st.phase = 'settle';
+      }
+    } else if (st.phase === 'settle'){
+      if (!items.length) beginExam();
+    } else if (st.phase === 'exam'){
+      st.et -= dt;
+      if (st.eidx < 12 && st.et <= 0){
+        chips.forEach(function(c){ c.classList.remove('now'); }); chips[st.eidx].classList.add('now');
+        launch('exam', exam[st.eidx], st.eidx, EXAMD); st.eidx++; st.et = .85;
+      }
+    }
+    for (i = 0; i < items.length; i++) advance(items[i], dt);
+    items = items.filter(function(it){ return !it.dead; });
+    if (L) L.nodes.forEach(function(n){
+      n.charge = Math.max(0, n.charge - dt * .9); if (n.charge > 1.2) n.charge = 1.2;
+      n.flash = Math.max(0, n.flash - dt * 1.6); n.tintT = Math.max(0, n.tintT - dt * .9); n.la = Math.max(0, n.la - dt * .55); n.pop = Math.max(0, n.pop - dt * 1.4);
+    });
+    termFlash = Math.max(0, termFlash - dt * 1.3); swT = Math.max(0, swT - dt * .6); celebCool = Math.max(0, celebCool - dt);
+    for (i = celebs.length - 1; i >= 0; i--){ celebs[i].t += dt; if (celebs[i].t > 1.1) celebs.splice(i, 1); }
+    if (ans){ ans.t += dt; if (ans.t > ans.hold) ans = null; }
+    if (st.tags && tagT < 1) tagT = Math.min(1, tagT + dt * 1.2);
+  }
+
+  /* ---- el dibujo ---- */
+  var view = {s: 1, ox: 0, oy: 0};
+  function fit(w, h){ var s = Math.min(w / VW, h / VH); view.s = s; view.ox = (w - VW * s) / 2; view.oy = (h - VH * s) / 2; }
+  function fs(n){ return Math.min(n * 1.7, Math.max(n, 10.5 / view.s)); }
+  function font(n){ return '600 ' + n + 'px "Inter Tight",system-ui,sans-serif'; }
+  function line(ctx, pts, wBase, taper, dashed){
+    for (var i = 1; i < pts.length; i++){
+      if (dashed && Math.floor(i / 3) % 2 === 1) continue;
+      ctx.lineWidth = wBase * (taper ? .35 + .65 * i / pts.length : 1);
+      ctx.beginPath(); ctx.moveTo(pts[i - 1][0], pts[i - 1][1]); ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke();
+    }
+  }
+  function thick(w, big){ return w === null ? 4 : (big ? 1.6 : 1.3) + (big ? 9 : 7) * Math.sqrt(Math.min(1, Math.abs(w) / WMAX)); }
+  /* un cuerpo-recipiente: se llena con «lo que le llega» y una línea dorada marca desde dónde se enciende (-sesgo) */
+  function frOf(n, z){ var a = n.range[0], b = n.range[1]; return Math.max(.03, Math.min(.97, (z - a) / (b - a))); }
+  function drawNode(ctx, n, t, showLabel){
+    var lit = n.shown * .6 + n.flash * .4, pop = 1, BR, i;
+    if (n.fin) for (i = 0; i < celebs.length; i++){ var cu = Math.min(1, celebs[i].t / .7); pop = Math.max(pop, 1 + .15 * celebs[i].s * Math.sin(cu * Math.PI)); }
+    if (!n.fin) pop = 1 + .1 * n.pop * Math.sin(Math.min(1, n.pop) * Math.PI / 2 + .6);
+    BR = n.r * pop;
+    glow(ctx, n.x, n.y, BR * (2 + lit * 2.2), 'rgba(255,205,90,' + (.1 + lit * .5) + ')', 'rgba(201,162,39,0)');
+    if (n.flash > .3) glow(ctx, n.x, n.y, BR * 4, 'rgba(180,215,255,' + (n.flash * .3) + ')', 'rgba(106,167,255,0)');
+    function bodyPath(){
+      ctx.beginPath();
+      for (var q = 0; q <= 64; q++){
+        var th = q / 64 * 6.2832, rr = BR * (1 + .05 * Math.sin(th * 3 + t * .8 + n.ph) + .035 * Math.sin(th * 5 - t * .6 + n.ph) + lit * .05);
+        var px = n.x + Math.cos(th) * rr, py = n.y + Math.sin(th) * rr;
+        if (q) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      }
+      ctx.closePath();
+    }
+    bodyPath();
+    var bg = ctx.createRadialGradient(n.x - BR * .18, n.y - BR * .22, 2, n.x, n.y, BR * 1.1);
+    bg.addColorStop(0, 'rgba(255,' + (215 + lit * 30 | 0) + ',' + (130 + lit * 80 | 0) + ',' + (.55 + lit * .45) + ')');
+    bg.addColorStop(.6, 'rgba(' + (150 + lit * 90 | 0) + ',' + (110 + lit * 70 | 0) + ',25,' + (.5 + lit * .4) + ')');
+    bg.addColorStop(1, 'rgba(60,42,8,.85)');
+    ctx.fillStyle = bg; ctx.fill();
+    var lineY = 0, have = !!n.wD && !!st.net, x, top = n.y + BR;
+    function yAt(f){ return n.y + BR - f * 2 * BR; }
+    if (have){
+      var fl = Math.max(.07, Math.min(.93, frOf(n, -n.bD))), fz = frOf(n, n.lvD), above = n.lvD > -n.bD;
+      if (above) fz = Math.max(fz, fl + .04); else fz = Math.min(fz, fl - .04);
+      lineY = yAt(fl);
+      ctx.save(); bodyPath(); ctx.clip();
+      var la = Math.min(1, n.la);
+      if (la > 0){
+        var yz = yAt(fz);
+        ctx.beginPath(); ctx.moveTo(n.x - BR - 4, top + 4);
+        for (x = n.x - BR - 4; x <= n.x + BR + 4; x += 4) ctx.lineTo(x, yz + Math.sin(x * .13 + t * 3) * 2.2);
+        ctx.lineTo(n.x + BR + 4, top + 4); ctx.closePath();
+        var lg = ctx.createLinearGradient(0, yz, 0, top);
+        if (above){ lg.addColorStop(0, 'rgba(255,240,170,.95)'); lg.addColorStop(1, 'rgba(255,190,70,.85)'); }
+        else { lg.addColorStop(0, 'rgba(165,200,255,.92)'); lg.addColorStop(1, 'rgba(60,100,215,.85)'); }
+        ctx.globalAlpha = la; ctx.fillStyle = lg; ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.4; ctx.beginPath();
+        for (x = n.x - BR - 4; x <= n.x + BR + 4; x += 4){ var yy = yz + Math.sin(x * .13 + t * 3) * 2.2; if (x > n.x - BR - 4) ctx.lineTo(x, yy); else ctx.moveTo(x, yy); }
+        ctx.stroke(); ctx.globalAlpha = 1;
+      }
+      ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 1.6; ctx.shadowColor = '#c9a227'; ctx.shadowBlur = 8; ctx.beginPath();
+      for (x = n.x - BR - 4; x <= n.x + BR + 4; x += 4){ var yl2 = lineY + Math.sin(x * .2 + t * 1.5) * 1.6; if (x > n.x - BR - 4) ctx.lineTo(x, yl2); else ctx.moveTo(x, yl2); }
+      ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+    bodyPath();
+    ctx.strokeStyle = 'rgba(255,224,138,' + (.45 + lit * .5) + ')'; ctx.lineWidth = 2; ctx.stroke();
+    glow(ctx, n.x + BR * .1, n.y + BR * .05, BR * .27, 'rgba(255,250,230,' + (.2 + lit * .5) + ')', 'rgba(255,224,138,0)');
+    if (n.tint && n.tintT > 0) glow(ctx, n.x, n.y, n.r * .95, css(n.tint, .6 * n.tintT), css(n.tint, 0));
+    return lineY;
+  }
+
+  function drawNet(ctx, w, h, dt, t){
+    if (!L) return;
+    if (!reduced) tick(dt);
+    fit(w, h);
+    var i, j, k = K, F = L.F, ke = reduced ? 1 : Math.min(1, dt * 5);
+    L.nodes.forEach(function(n){
+      if (n.wD){ for (i = 0; i < n.wD.length; i++) n.wD[i] += (n.wT[i] - n.wD[i]) * ke; n.bD += (n.bT - n.bD) * ke; }
+      if (n.la > 0) n.lvD += (n.lvT - n.lvD) * (reduced ? 1 : Math.min(1, dt * 5)); else n.lvD = n.range[0];
+      n.shown += (Math.min(n.charge, 1) - n.shown) * Math.min(1, dt * 6);
+    });
+    ctx.save(); ctx.translate(view.ox, view.oy); ctx.scale(view.s, view.s);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    // color de entrada (swatch)
+    ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 1.3; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.arc(SWT.x, SWT.y, SWT.r, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]);
+    if (swCol && swT > 0){
+      var sa = Math.min(1, swT * 2);
+      glow(ctx, SWT.x, SWT.y, SWT.r * 2.2, css(swCol, .4 * sa), css(swCol, 0));
+      ctx.fillStyle = css(swCol, sa); ctx.beginPath(); ctx.arc(SWT.x, SWT.y, SWT.r, 0, 6.2832); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,' + (.55 * sa) + ')'; ctx.lineWidth = 1.4; ctx.stroke();
+    }
+    ctx.font = font(fs(10.5)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(141,137,125,.95)';
+    ctx.fillText('color', SWT.x, SWT.y + SWT.r + fs(10.5) * .9);
+
+    // ramitas de cada entrada (decoración)
+    ctx.strokeStyle = 'rgba(201,162,39,.22)'; ctx.lineWidth = 1.2;
+    L.twigs.forEach(function(tw){ tw.forEach(function(b){ ctx.beginPath(); ctx.moveTo(b.p[0], b.p[1]); ctx.quadraticCurveTo(b.c[0], b.c[1], b.e[0], b.e[1]); ctx.stroke(); }); });
+    // conexiones de las 3 entradas: grosor = |peso| real; trazo cortado = peso negativo («resta»)
+    var big1 = k === 1;
+    for (i = 0; i < 3; i++){
+      L.first.forEach(function(n, jj){
+        var wv = n.wD ? n.wD[i] : null, wd = thick(wv, big1), neg = wv !== null && wv < 0, pts = L.conn1[i][jj];
+        ctx.strokeStyle = chc(i, .07); line(ctx, pts, wd * 3, true, neg);
+        ctx.strokeStyle = 'rgba(214,176,52,.78)'; line(ctx, pts, wd, true, neg);
+        ctx.strokeStyle = chc(i, .34); line(ctx, pts, wd, true, neg);
+      });
+    }
+    // conexiones del medio a la que decide
+    L.conn2.forEach(function(pts, jj){
+      var wv = F.wD ? F.wD[jj] : null, wd = thick(wv, false), neg = wv !== null && wv < 0;
+      ctx.strokeStyle = hue(jj, .08); line(ctx, pts, wd * 3, true, neg);
+      ctx.strokeStyle = 'rgba(214,176,52,.78)'; line(ctx, pts, wd, true, neg);
+      ctx.strokeStyle = hue(jj, .38); line(ctx, pts, wd, true, neg);
+    });
+    // puntas de las 3 entradas
+    for (i = 0; i < 3; i++){
+      var tp = L.tips[i];
+      glow(ctx, tp[0], tp[1], 9, chc(i, .5), chc(i, 0));
+      var ty = i === 2 ? tp[1] + fs(12) * 1.5 : tp[1] - fs(12) * 1.3;
+      ctx.font = font(fs(12)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = chc(i, .95); ctx.fillText(CHN[i], tp[0], ty);
+    }
+    // axón único con su terminal único
+    var AX = L.AX, AN = L.AN, term = L.term, endP = AX[AN - 1];
+    ctx.strokeStyle = 'rgba(201,162,39,.08)'; line(ctx, AX, 14, false);
+    ctx.strokeStyle = 'rgba(190,155,40,.75)'; line(ctx, AX, 4, false);
+    ctx.strokeStyle = 'rgba(255,224,138,.12)'; ctx.lineWidth = 11;
+    [.25, .5, .75].forEach(function(f){ var kk = Math.round(f * (AN - 1)), a = AX[kk - 2], b = AX[kk + 2]; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); });
+    ctx.strokeStyle = 'rgba(190,155,40,.7)'; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(endP[0], endP[1]); ctx.lineTo(term[0], term[1]); ctx.stroke();
+
+    // viaje de cada ejemplo
+    items.forEach(function(it){
+      var ii, jj, pos, u = it.t;
+      if (it.stage === 'in'){
+        for (ii = 0; ii < 3; ii++){
+          var v = it.c[ii], al = .35 + .65 * v, rad = 3 + v * 7.5, tipP = L.tips[ii];
+          for (jj = 0; jj < L.first.length; jj++){
+            if (u < .3){
+              if (jj > 0) continue;
+              var e = u / .3; e = e * e * (3 - 2 * e);
+              var sx = SWT.x + SWT.r * .6;
+              pos = [sx + (tipP[0] - sx) * e, SWT.y + (tipP[1] - SWT.y) * e];
+              ctx.strokeStyle = chc(ii, al * .4 * (1 - e * .4)); ctx.lineWidth = 1.5;
+              ctx.beginPath(); ctx.moveTo(sx, SWT.y); ctx.lineTo(pos[0], pos[1]); ctx.stroke();
+            } else {
+              var fq = (u - .3) / .7, uu = fq * fq * (3 - 2 * fq) * .35 + fq * .65, cpts = L.conn1[ii][jj], kq;
+              for (kq = 3; kq >= 1; kq--){ var q = ptAt(cpts, uu - kq * .035); glow(ctx, q[0], q[1], rad * .9, chc(ii, .12 * (4 - kq) * al), chc(ii, 0)); }
+              pos = ptAt(cpts, uu);
+            }
+            glow(ctx, pos[0], pos[1], rad * 2.6, chc(ii, al * .6), chc(ii, 0));
+            ctx.fillStyle = chc(ii, al); ctx.beginPath(); ctx.arc(pos[0], pos[1], rad, 0, 6.2832); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,' + (al * .6) + ')'; ctx.lineWidth = 1.2; ctx.stroke();
+          }
+        }
+      } else if (it.stage === 'mid'){
+        for (jj = 0; jj < L.conn2.length; jj++){
+          var hh = it.hs ? it.hs[jj] : 0, pp = ptAt(L.conn2[jj], u * u * (3 - 2 * u)), rr = 3 + hh * 7;
+          glow(ctx, pp[0], pp[1], rr * 3, 'rgba(255,226,140,' + (.15 + .6 * hh) + ')', 'rgba(255,200,80,0)');
+          ctx.fillStyle = 'rgba(255,240,190,' + (.25 + .75 * hh) + ')'; ctx.beginPath(); ctx.arc(pp[0], pp[1], rr, 0, 6.2832); ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,' + (.2 + .5 * hh) + ')'; ctx.lineWidth = 1.2; ctx.stroke();
+        }
+      } else if (it.stage === 'out'){
+        var m = Math.min(1, u * 1.4), cc = lc(NEUT, lc(DARK, LIGHT, it.p), m), hc = lc([200, 190, 150], it.a ? [255, 226, 140] : [100, 150, 255], m);
+        pos = ptAt(AX, u);
+        glow(ctx, pos[0], pos[1], 26, rgb(hc, .8), rgb(hc, 0));
+        ctx.fillStyle = rgb(cc, 1); ctx.beginPath(); ctx.arc(pos[0], pos[1], 6.5, 0, 6.2832); ctx.fill();
+        ctx.strokeStyle = it.a ? 'rgba(255,255,255,.85)' : 'rgba(130,175,255,.95)'; ctx.lineWidth = 1.8; ctx.stroke();
+      } else {
+        /* corrección: vuelve hacia atrás por el axón, la que decide y las entradas, en azul frío; brillo ~ cambio REAL */
+        var bp = [], ch = it.chg.n, nF = ch.length - 1, e1 = k === 1 ? .4 : .25, e2 = .6;
+        if (u < e1) bp.push([ptAt(AX, 1 - u / e1), ch[nF].b]);
+        else if (k > 1 && u < e2){ for (jj = 0; jj < k; jj++) bp.push([ptAt(L.conn2[jj], 1 - (u - e1) / (e2 - e1)), ch[nF].w[jj]]); }
+        else { var s0 = k === 1 ? e1 : e2; for (ii = 0; ii < 3; ii++) for (jj = 0; jj < L.first.length; jj++) bp.push([ptAt(L.conn1[ii][jj], 1 - (u - s0) / (1 - s0)), ch[jj].w[ii]]); }
+        bp.forEach(function(b){
+          var p = b[0], sv = b[1];
+          if (sv < .04) return;
+          glow(ctx, p[0], p[1], 8 + 16 * sv, 'rgba(120,175,255,' + (.2 + .65 * sv) + ')', 'rgba(106,167,255,0)');
+          ctx.fillStyle = 'rgba(220,235,255,' + (.4 + .6 * sv) + ')'; ctx.beginPath(); ctx.arc(p[0], p[1], 1.5 + 2.8 * sv, 0, 6.2832); ctx.fill();
+        });
+      }
+    });
+
+    // cuerpos
+    var tagOn = st.tags && tagT > 0;
+    L.mids.forEach(function(n, jj){
+      drawNode(ctx, n, t);
+      ctx.font = font(fs(11)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = hue(jj, .95);
+      ctx.fillText(String(jj + 1), n.x - n.r * .95, n.y - n.r * .95);
+      if (tagOn && st.tags[jj]){
+        var tt = TAGSHORT[st.tags[jj].tag], f1 = fs(10), ty0 = n.y + n.r + f1 * 1.25;
+        ctx.font = font(f1); var bw = Math.max(ctx.measureText(tt[0]).width, ctx.measureText(tt[1]).width) + 12;
+        ctx.globalAlpha = tagT; ctx.fillStyle = 'rgba(9,9,10,.82)'; rrect(ctx, n.x - bw / 2, ty0 - f1 * .8, bw, f1 * 2.5, 6); ctx.fill();
+        ctx.fillStyle = 'rgba(141,137,125,.95)'; ctx.fillText(tt[0], n.x, ty0 + f1 * .05);
+        ctx.fillStyle = st.tags[jj].tag === 'none' ? 'rgba(141,137,125,.95)' : hue(jj, 1); ctx.fillText(tt[1], n.x, ty0 + f1 * 1.25);
+        ctx.globalAlpha = 1;
+      }
+    });
+    var lineY = drawNode(ctx, F, t);
+    if (k > 1){ ctx.font = font(fs(10.5)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(141,137,125,.95)'; ctx.fillText('la que decide', F.x, F.y + F.r + fs(10.5) * 1.3); }
+
+    for (var r = ripples.length - 1; r >= 0; r--){
+      var rp = ripples[r]; rp.t += dt;
+      if (rp.t > 1){ ripples.splice(r, 1); continue; }
+      ctx.strokeStyle = 'rgba(160,200,255,' + (1 - rp.t) * .7 + ')'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(rp.x, rp.y, 6 + rp.t * 34, 0, 6.2832); ctx.stroke();
+    }
+    // celebración al aprender: anillo dorado, chispas y un «+» (más fuertes cuanto más cambian los pesos)
+    celebs.forEach(function(c){
+      var u = c.t, fade = Math.max(0, 1 - u / 1.05);
+      ctx.strokeStyle = 'rgba(255,214,100,' + (fade * (.35 + .6 * c.s)) + ')'; ctx.lineWidth = 1 + 3 * fade * c.s;
+      ctx.beginPath(); ctx.arc(F.x, F.y, F.r + u * (50 + 40 * c.s), 0, 6.2832); ctx.stroke();
+      c.sp.forEach(function(sk){
+        var d = F.r + sk.v * u, px = F.x + Math.cos(sk.a) * d, py = F.y + Math.sin(sk.a) * d;
+        glow(ctx, px, py, sk.r * 4, 'rgba(255,214,100,' + (fade * .6) + ')', 'rgba(255,214,100,0)');
+        ctx.fillStyle = 'rgba(255,244,190,' + fade + ')'; ctx.beginPath(); ctx.arc(px, py, sk.r * (1 - u * .4), 0, 6.2832); ctx.fill();
+      });
+      if (c.s > .12){
+        ctx.font = font(fs(12 + 10 * c.s)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.shadowColor = '#c9a227'; ctx.shadowBlur = 8; ctx.fillStyle = 'rgba(255,230,140,' + fade + ')';
+        ctx.fillText('+', F.x, F.y - F.r - 8 - u * 34); ctx.shadowBlur = 0;
+      }
+    });
+
+    // etiqueta de la línea de la neurona que decide
+    if (F.wD && st.net){
+      var lf = Math.min(13, fs(10.5)), lx = F.x + F.r + 10, ly = lineY;
+      if (Math.abs(ly - F.y) < 18) ly = ly <= F.y ? F.y - 24 : F.y + 26;
+      var ex = F.x + Math.sqrt(Math.max(0, F.r * F.r - (lineY - F.y) * (lineY - F.y)));
+      ctx.strokeStyle = 'rgba(255,224,138,.5)'; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
+      ctx.beginPath(); ctx.moveTo(ex, lineY); ctx.lineTo(lx - 3, ly); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = font(lf); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,224,138,.92)';
+      ctx.fillText('a partir de aquí: sí', lx, ly);
+    }
+
+    // salida: UN solo terminal, un bulbo luminoso que toma el color de la respuesta
+    var bx0 = term[0], by0 = term[1], tx = bx0 + 18, al2 = ans ? Math.max(0, Math.min(1, ans.t * 6, (ans.hold - ans.t) * 3)) : 0;
+    glow(ctx, bx0, by0, 12, 'rgba(255,224,138,.25)', 'rgba(255,224,138,0)');
+    ctx.fillStyle = 'rgba(190,155,40,.7)'; ctx.beginPath(); ctx.arc(bx0, by0, 5, 0, 6.2832); ctx.fill();
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    if (ans && al2 > 0){
+      var warm = ans.a, br = 8 + termFlash * 3, word = warm ? 'intermedio' : 'no';
+      ctx.globalAlpha = al2;
+      if (warm){
+        glow(ctx, bx0, by0, 30 + termFlash * 8, 'rgba(255,230,150,.85)', 'rgba(255,200,80,0)');
+        var wg = ctx.createRadialGradient(bx0 - 2, by0 - 2, 1, bx0, by0, br);
+        wg.addColorStop(0, '#fffbe6'); wg.addColorStop(1, '#ffd45a');
+        ctx.fillStyle = wg; ctx.beginPath(); ctx.arc(bx0, by0, br, 0, 6.2832); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.5; ctx.stroke();
+      } else {
+        glow(ctx, bx0, by0, 24 + termFlash * 6, 'rgba(70,110,230,.55)', 'rgba(60,100,220,0)');
+        var dg = ctx.createRadialGradient(bx0, by0, 1, bx0, by0, br);
+        dg.addColorStop(0, '#070b1c'); dg.addColorStop(1, '#1b2c64');
+        ctx.fillStyle = dg; ctx.beginPath(); ctx.arc(bx0, by0, br, 0, 6.2832); ctx.fill();
+        ctx.strokeStyle = 'rgba(125,175,255,.95)'; ctx.lineWidth = 2; ctx.stroke();
+      }
+      var f1 = fs(17); ctx.font = font(f1);
+      ctx.shadowColor = warm ? '#ffd45a' : '#5b8cff'; ctx.shadowBlur = 14; ctx.fillStyle = warm ? '#fff3c4' : '#c4dcff';
+      ctx.fillText(word, tx, by0); ctx.shadowBlur = 0;
+      var ww = ctx.measureText(word).width; ctx.font = font(fs(13));
+      ctx.fillStyle = ans.ok ? (warm ? '#ffe9a0' : '#8fd0ff') : '#ff6a55'; ctx.fillText(ans.ok ? '✓' : '✗', tx + ww + 7, by0);
+      if (ans.era !== null){
+        ctx.font = font(fs(12)); ctx.shadowColor = '#5b8cff'; ctx.shadowBlur = 8; ctx.fillStyle = 'rgba(150,195,255,1)';
+        ctx.fillText(ans.era ? 'era intermedio' : 'no era intermedio', tx, by0 + f1 * .95 + fs(12) * .8); ctx.shadowBlur = 0;
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (!ans || al2 < 1){
+      var f2 = fs(14); ctx.font = font(f2); ctx.globalAlpha = 1 - al2;
+      ctx.fillStyle = 'rgba(255,224,138,.45)'; ctx.fillText('¿intermedio?', tx, by0);
+      ctx.globalAlpha = 1;
+    }
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
+  neuronLoop = createLoop(cv, {draw: drawNet});
+  flaskLoop = createLoop(fcv, {draw: function(ctx, w, h, dt, t){
+    lv += (target - lv) * (reduced ? 1 : Math.min(1, dt * 2.6));
+    SH.flaskDraw(ctx, w, h, t, lv, labelShown);
+  }});
+
+  /* ---- código fuente en vivo: el mismo código que hace esta pantalla, con los ejemplos reales ---- */
+  (function(){
+    var pre = document.getElementById('qccode'), btn = document.getElementById('qcbtn'), panel = document.getElementById('qcpanel'), wrap = document.getElementById('qcode'), copy = document.getElementById('qccopy');
+    var cs = {k: 1, trained: false, probe: null, open: {ej: false, ex: false}, mode: 'exam', cur: null};
+    var LIM = 8, SHOW = 3;
+    function f2(x){ return x.toFixed(2); }
+    function cl(c){ return '{ r: ' + f2(c[0]) + ', g: ' + f2(c[1]) + ', b: ' + f2(c[2]) + ', intermedio: ' + (labelOf(c) ? 'true' : 'false') + ' }'; }
+    /*SNIP-START*/
+    function buildLines(cs){
+      var L = [], k = cs.k;
+      function add(t, o){ var l = o || {}; l.t = t; L.push(l); return l; }
+      function list(name, grp, arr){
+        add('const ' + name + ' = [');
+        var coll = arr.length > LIM && !cs.open[grp];
+        arr.forEach(function(c, i){
+          add('  ' + cl(c) + ',', {sw: c, grp: grp, i: i, hid: coll && i >= SHOW});
+          if (coll && i === SHOW - 1) add('  // … y ' + (arr.length - SHOW) + ' más', {more: grp, disp: true});
+        });
+        if (arr.length > LIM && cs.open[grp]) add('  // mostrar menos', {less: grp, disp: true});
+        add('];');
+      }
+      add('import { NetworkN, Adam, setRandom, seededRandom } from "@dniskav/neuron";'); add('');
+      if (cs.trained){
+        add('// ' + NTRAIN + ' ejemplos. «intermedio» = ni muy claro ni muy oscuro');
+        add('// (brillo entre ' + LO + ' y ' + HI + '; brillo = 0.299 r + 0.587 g + 0.114 b)');
+        list('ejemplos', 'ej', train);
+      } else add('const ejemplos = [];   // todavía no le has enseñado nada');
+      add('');
+      add(k === 1 ? '// Una sola neurona: 3 entradas (rojo, verde, azul) → 1 salida' : '// Un equipo: 3 entradas (rojo, verde, azul) → ' + k + ' neuronas → 1 que decide');
+      add('setRandom(seededRandom(' + INIT_SEED + '));   // así nace la de esta pantalla');
+      add('const red = new NetworkN([' + structOf(k).join(', ') + '], { optimizer: () => new Adam() });');
+      add('setRandom(null);');
+      add('');
+      add('// Aprender: responde y la corrigen (intermedio = 1, el resto = 0)');
+      add('for (let repaso = 0; repaso < ' + EPOCHS + '; repaso++)');
+      add('  for (const { r, g, b, intermedio } of ejemplos)');
+      add('    red.train([r, g, b], [intermedio ? 1 : 0], ' + LR + ');', {m: 'learn'});
+      add('');
+      add('// Examen: 12 colores nuevos, solo responde, nada cambia');
+      list('examen', 'ex', exam);
+      add('let aciertos = 0;');
+      add('for (const { r, g, b, intermedio } of examen) {');
+      add('  const [p] = red.predict([r, g, b]);', {m: 'exam'});
+      add('  const respuesta = p > 0.5;', {m: 'exam'});
+      add('  if (respuesta === intermedio) aciertos++;');
+      add('}');
+      add('console.log(Math.round(aciertos / 12 * 100) + " %");');
+      if (cs.probe){
+        add(''); add('// Tu color: se prueba igual, sin corregir');
+        add('const tuyo = red.predict([' + cs.probe.map(f2).join(', ') + '])[0] > 0.5 ? "intermedio" : "no";', {m: 'probe', sw: cs.probe});
+      }
+      return L;
+    }
+    /*SNIP-END*/
+    function rawText(){ return buildLines(cs).filter(function(l){ return !l.disp; }).map(function(l){ return l.t; }).join('\n'); }
+    function render(){
+      var html = '';
+      buildLines(cs).forEach(function(l){
+        if (l.hid) return;
+        if (l.more || l.less){
+          html += '<button type="button" class="ln more" data-tog="' + (l.more || l.less) + '" aria-expanded="' + (l.less ? 'true' : 'false') + '">' + hi(l.t) + '</button>'; return;
+        }
+        html += '<span class="ln"' + (l.m ? ' data-m="' + l.m + '"' : '') + (l.grp ? ' data-g="' + l.grp + '" data-i="' + l.i + '"' : '') + '>' + (hi(l.t) || ' ') + (l.sw ? '<i class="sw" style="background:' + css(l.sw) + '"></i>' : '') + '</span>';
+      });
+      pre.innerHTML = html; applyHL();
+    }
+    function applyHL(){
+      Array.prototype.forEach.call(pre.querySelectorAll('.ln'), function(el){
+        el.classList.toggle('hl', el.getAttribute('data-m') === cs.mode);
+        el.classList.remove('cur');
+      });
+      if (cs.cur){
+        var el = pre.querySelector('.ln[data-g="' + cs.cur.g + '"][data-i="' + cs.cur.i + '"]') || pre.querySelector('.more[data-tog="' + cs.cur.g + '"]');
+        if (el) el.classList.add('cur');
+      }
+    }
+    pre.addEventListener('click', function(e){
+      var b = e.target.closest ? e.target.closest('[data-tog]') : null;
+      if (!b) return;
+      var g = b.getAttribute('data-tog'); cs.open[g] = !cs.open[g]; render();
+      var nb = pre.querySelector('[data-tog="' + g + '"]'); if (nb) nb.focus({preventScroll: true});
+    });
+    codeApi = {
+      set: function(k, trained){ cs.k = k; cs.trained = !!trained; cs.probe = null; cs.cur = null; cs.open = {ej: false, ex: false}; render(); },
+      probe: function(c){ cs.probe = c.slice(); cs.mode = 'probe'; render(); },
+      mode: function(m){ cs.mode = m; applyHL(); },
+      cur: function(g, i){ cs.cur = g ? {g: g, i: i} : null; applyHL(); },
+      raw: rawText
+    };
+    render();
+    var open = false;
+    function setOpen(v, back){
+      open = v; btn.setAttribute('aria-expanded', v ? 'true' : 'false');
+      if (v){ if (panelsApi.brain) panelsApi.brain.close(); panel.hidden = false; void panel.offsetWidth; panel.classList.add('open'); panel.focus({preventScroll: true}); }
+      else { panel.classList.remove('open'); if (back) btn.focus({preventScroll: true}); }
+    }
+    panelsApi.code = {close: function(){ if (open) setOpen(false, false); }};
+    btn.addEventListener('click', function(){ setOpen(!open, true); });
+    document.addEventListener('keydown', function(e){ if (open && e.key === 'Escape'){ e.stopPropagation(); setOpen(false, true); } }, true);
+    document.addEventListener('pointerdown', function(e){ if (open && !wrap.contains(e.target)) setOpen(false, false); });
+    copy.addEventListener('click', function(){
+      var done = function(){ copy.classList.add('done'); setTimeout(function(){ copy.classList.remove('done'); }, 1400); };
+      try { navigator.clipboard.writeText(rawText()).then(done, function(){}); } catch (e) {}
+    });
+  })();
+
+  /* ---- lo que aprendió: los pesos y el sesgo REALES de cada neurona, en vivo ---- */
+  (function(){
+    var btn = document.getElementById('qbbtn'), panel = document.getElementById('qbpanel'), wrap = document.getElementById('qcode'), copy = document.getElementById('qbcopy');
+    var pre = document.getElementById('qbcode'), headEl = document.getElementById('qbhead'), groupsEl = document.getElementById('qbgroups'), noteEl2 = document.getElementById('qbnote');
+    var crowsEl = document.getElementById('qcrows'), phraseB = document.getElementById('qbphrase');
+    var WM = 20, timer = 0, open = false, lastText = '', view = null, cmp = null, crowEls = {}, groups = [], builtK = 0;
+    var LINEC = '255,224,138';
+    function sq(v){ return Math.sqrt(Math.min(1, Math.abs(v) / WM)); }
+    function rowHTML(label, c){ return '<div class="brow" style="--c:' + c + '"><span class="bl">' + label + '</span><div class="bt"><i class="bz"></i><i class="bb"></i></div><span class="bv">–</span></div>'; }
+    function build(k){
+      builtK = k; groups = []; var html = '', ids = [];
+      var chan = ['255,96,84', '96,214,112', '104,152,255'];
+      if (k === 1){
+        html += '<p class="bsec">La neurona</p><div class="bars" data-g="0">' + CHN.map(function(n, i){ return rowHTML(n, chan[i]); }).join('') + rowHTML('la línea', LINEC) + '</div>';
+        groups.push({node: 0, tag: null});
+      } else {
+        for (var j = 0; j < k; j++){
+          html += '<p class="bsec" style="color:rgb(' + NHUE[j].join(',') + ')">Neurona ' + (j + 1) + '</p><p class="bnote btag" data-t="' + j + '"></p><div class="bars" data-g="' + j + '">' + CHN.map(function(n, i){ return rowHTML(n, chan[i]); }).join('') + rowHTML('la línea', LINEC) + '</div>';
+          groups.push({node: j, tag: j});
+        }
+        html += '<p class="bsec">La que decide</p><div class="bars" data-g="' + k + '">';
+        for (var q = 0; q < k; q++) html += rowHTML('neurona ' + (q + 1), NHUE[q].join(','));
+        html += rowHTML('la línea', LINEC) + '</div>';
+        groups.push({node: k, tag: null});
+      }
+      groupsEl.innerHTML = html;
+      groups.forEach(function(g){ g.rows = Array.prototype.slice.call(groupsEl.querySelectorAll('.bars[data-g="' + g.node + '"] .brow')); g.tagEl = g.tag === null ? null : groupsEl.querySelector('.btag[data-t="' + g.tag + '"]'); });
+      lastText = '';
+    }
+    function setRow(el, v, isW){
+      var bar = el.querySelector('.bb'), wd = sq(v) * 50;
+      bar.style.width = wd + '%'; bar.style.left = (v >= 0 ? 50 : 50 - wd) + '%';
+      el.classList.toggle('neg', v < 0 && isW);
+      el.querySelector('.bv').textContent = (v < 0 ? '−' : '+') + Math.abs(v).toFixed(2) + (v < 0 && isW ? ' · resta' : '');
+    }
+    /*BRAIN-START*/
+    function brainText(k, flat, verdict, trained){
+      var L = ['import { NetworkN } from "@dniskav/neuron";', '',
+        trained ? '// Lo que aprendió ' + (k === 1 ? 'una sola neurona' : 'un equipo de ' + k + ' neuronas + la que decide') : '// Sin enseñarle nada: estos números son al azar',
+        'const aprendido = ['], i = 0, j;
+      if (k === 1){ L.push('  ' + flat.slice(0, 4).join(', ') + ',   // rojo, verde, azul, línea'); }
+      else {
+        for (j = 0; j < k; j++, i += 4) L.push('  ' + flat.slice(i, i + 4).join(', ') + ',   // neurona ' + (j + 1) + ': rojo, verde, azul, línea');
+        L.push('  ' + flat.slice(i, i + k + 1).join(', ') + ',   // la que decide: ' + Array.apply(null, Array(k)).map(function(_, q){ return 'neurona ' + (q + 1); }).join(', ') + ', línea');
+      }
+      L.push('];', '', '// Ponérselo a una red nueva: ya sabe, sin entrenar',
+        'const red = new NetworkN([' + structOf(k).join(', ') + ']);', 'red.setWeights(aprendido);',
+        'red.predict([0.50, 0.50, 0.50])[0] > 0.5 ? "intermedio" : "no";   // → ' + verdict);
+      return L.join('\n');
+    }
+    /*BRAIN-END*/
+    function flatOf(sn){ var f = []; sn.forEach(function(n){ n.w.forEach(function(v){ f.push(r4(v)); }); f.push(r4(n.b)); }); return f; }
+    function verdictOf(k, flat){ var n = newNet(k); n.setWeights(flat); return n.predict([.5, .5, .5])[0] > .5 ? 'intermedio' : 'no'; }
+    function miniBars(flat){
+      var n = flat.length, w = 100 / n;
+      return flat.map(function(v, i){
+        var hgt = Math.max(1, sq(v) * 10), top = v >= 0 ? 11 - hgt : 11;
+        return '<i style="left:' + (i * w).toFixed(2) + '%;width:' + (w - 1.4).toFixed(2) + '%;top:' + top.toFixed(1) + 'px;height:' + hgt.toFixed(1) + 'px;background:' + (v >= 0 ? 'rgba(255,224,138,.9)' : 'rgba(106,167,255,.9)') + '"></i>';
+      }).join('');
+    }
+    /* los 3 estados, calculados con las mismas semillas y el mismo entrenamiento que la pantalla */
+    function computeCmp(){
+      if (cmp || !libReady() || !st.net) return;
+      cmp = {};
+      KS.forEach(function(k){
+        var n = newNet(k), e; for (e = 0; e < EPOCHS; e++) trainPass(n);
+        var sc = score(n), flat = flatOf(snapNet(n)), pct = Math.round(sc.ok / 12 * 100), tags = specTags(n);
+        cmp[k] = {flat: flat, pct: pct, tags: tags, yes: sc.yes};
+        var b2 = document.createElement('button'); b2.type = 'button'; b2.className = 'crow'; b2.setAttribute('aria-pressed', 'false');
+        b2.title = kName(k) + ': ' + pct + ' % de aciertos'; b2.setAttribute('aria-label', b2.title + '. Ver su código.');
+        b2.innerHTML = '<span class="cl">' + k + (k === 1 ? ' neurona' : ' neuronas') + '</span><span class="cm2" aria-hidden="true">' + miniBars(flat) + '</span><span class="cp">' + pct + ' %</span>';
+        b2.addEventListener('click', function(){ view = (view === k ? null : k); lastText = ''; refresh(); });
+        crowsEl.appendChild(b2); crowEls[k] = b2;
+      });
+      var t1 = cmp[1], t2 = cmp[2], txt = 'Con 1 neurona: ' + t1.pct + ' %' + (t1.yes === 0 ? ', y solo porque dice «no» a todo' : '') + '. Con 2 neuronas: ' + t2.pct + ' %';
+      var names = t2.tags.map(function(t){ return TAGFULL[t.tag].replace('se enciende con ', ''); });
+      if (t2.pct >= 90) txt += ' (una se enciende con ' + names[0] + ' y otra con ' + names[1] + ')';
+      txt += '. Con 3: ' + cmp[3].pct + ' %.';
+      phraseB.textContent = txt;
+    }
+    function refresh(){
+      var net = st.net, txt;
+      if (builtK !== K) build(K);
+      computeCmp();
+      Object.keys(crowEls).forEach(function(k){
+        var ke = +k, el = crowEls[k];
+        el.classList.toggle('tried', results[ke] !== undefined);
+        el.classList.toggle('cur', !!net && ke === K);
+        el.classList.toggle('sel', view === ke); el.setAttribute('aria-pressed', view === ke ? 'true' : 'false');
+      });
+      var nparams = K === 1 ? 4 : K * 4 + K + 1;
+      headEl.textContent = 'Todo lo que sabe cabe en ' + nparams + ' números';
+      if (net){
+        var sn = snapNet(net);
+        groups.forEach(function(g){
+          var nd = sn[g.node], rows = g.rows;
+          nd.w.forEach(function(v, i){ setRow(rows[i], v, true); });
+          setRow(rows[nd.w.length], nd.b, false);
+          if (g.tagEl) g.tagEl.textContent = st.tags && st.tags[g.tag] ? TAGFULL[st.tags[g.tag].tag] + ' (' + fracText(st.tags[g.tag].f) + ')' : 'Su especialidad se mide en el examen.';
+        });
+        noteEl2.textContent = st.trained ? '' : 'Aún no ha aprendido: estos números son al azar.';
+      } else noteEl2.textContent = 'Preparando las neuronas…';
+      if (view !== null && cmp){ txt = brainText(view, cmp[view].flat, verdictOf(view, cmp[view].flat), true); }
+      else if (net){ var fl = flatOf(snapNet(net)); txt = brainText(K, fl, verdictOf(K, fl), st.trained); }
+      else txt = '// Pulsa «Enséñale» o examina sin enseñarle:\n// aquí verás los números que aprende.';
+      if (txt !== lastText){ lastText = txt; pre.innerHTML = txt.split('\n').map(function(l){ return '<span class="ln">' + (hi(l) || ' ') + '</span>'; }).join(''); }
+    }
+    function setOpen(v, back){
+      open = v; btn.setAttribute('aria-expanded', v ? 'true' : 'false');
+      if (v){
+        if (panelsApi.code) panelsApi.code.close();
+        panel.hidden = false; refresh(); void panel.offsetWidth; panel.classList.add('open'); panel.focus({preventScroll: true});
+        timer = setInterval(refresh, 100);
+      } else { panel.classList.remove('open'); clearInterval(timer); if (back) btn.focus({preventScroll: true}); }
+    }
+    panelsApi.brain = {close: function(){ if (open) setOpen(false, false); }};
+    btn.addEventListener('click', function(){ setOpen(!open, true); });
+    document.addEventListener('keydown', function(e){ if (open && e.key === 'Escape'){ e.stopPropagation(); setOpen(false, true); } }, true);
+    document.addEventListener('pointerdown', function(e){ if (open && !wrap.contains(e.target)) setOpen(false, false); });
+    copy.addEventListener('click', function(){
+      var done = function(){ copy.classList.add('done'); setTimeout(function(){ copy.classList.remove('done'); }, 1400); };
+      try { navigator.clipboard.writeText(lastText).then(done, function(){}); } catch (e) {}
+    });
+    panelsApi.brainApi = {refresh: refresh, cmp: function(){ computeCmp(); return cmp; }, text: function(){ return lastText; }};
+  })();
+
+  /* ---- controles ---- */
+  goBtn.addEventListener('click', function(){ start(true); });
+  b0.addEventListener('click', function(){ start(false); });
+  minus.addEventListener('click', function(){ setK(K - 1); });
+  plus.addEventListener('click', function(){ setK(K + 1); });
+  fresh(1);
+  setStatus(libReady() ? 'Equipo nuevo: ' + kName(1) + ' · pulsa «Enséñale»' : 'Preparando las neuronas…');
+
+  /* esta pantalla puede ser más alta que la ventana (móvil): la marcamos como activa al cruzar el centro */
+  (function(){
+    var io = new IntersectionObserver(function(en){ if (en[0].isIntersecting){ sec.classList.add('in'); setActive(sections.indexOf(sec)); } }, {root: main, rootMargin: '-45% 0px -45% 0px', threshold: 0});
+    io.observe(sec);
+  })();
+})();
+
+/* ---------- 3. snake de adelanto ---------- */
+(function(){
+  var COLS = 24, ROWS = 12, snake, food, acc = 0, dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  function reset(){
+    snake = [{x: 4, y: 6}, {x: 3, y: 6}, {x: 2, y: 6}];
+    place();
+  }
+  function place(){
+    for (var n = 0; n < 200; n++){
+      var f = {x: (Math.random() * COLS) | 0, y: (Math.random() * ROWS) | 0};
+      if (!snake.some(function(s){ return s.x === f.x && s.y === f.y; })){ food = f; return; }
+    }
+    reset();
+  }
+  function step(){
+    var hd = snake[0], opts = [];
+    dirs.forEach(function(d){
+      var nx = hd.x + d[0], ny = hd.y + d[1];
+      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return;
+      if (snake.slice(0, -1).some(function(s){ return s.x === nx && s.y === ny; })) return;
+      opts.push({x: nx, y: ny, c: Math.abs(nx - food.x) + Math.abs(ny - food.y) + Math.random() * .5});
+    });
+    if (!opts.length){ reset(); return; }
+    opts.sort(function(a, b){ return a.c - b.c; });
+    var nx = opts[0];
+    snake.unshift({x: nx.x, y: nx.y});
+    if (nx.x === food.x && nx.y === food.y){ if (snake.length > 28) reset(); else place(); }
+    else snake.pop();
+  }
+  reset();
+  createLoop(document.getElementById('snakecv'), {
+    draw: function(ctx, w, h, dt){
+      acc += dt;
+      while (acc > .11){ acc -= .11; step(); }
+      var c = Math.min(w / COLS, h / ROWS), ox = (w - c * COLS) / 2, oy = (h - c * ROWS) / 2, i;
+      ctx.fillStyle = 'rgba(255,255,255,.07)';
+      for (var x = 0; x < COLS; x++) for (var y = 0; y < ROWS; y++){
+        ctx.beginPath(); ctx.arc(ox + (x + .5) * c, oy + (y + .5) * c, 1, 0, 6.2832); ctx.fill();
+      }
+      var fx = ox + (food.x + .5) * c, fy = oy + (food.y + .5) * c, pulse = 1 + Math.sin(performance.now() / 180) * .15;
+      var g = ctx.createRadialGradient(fx, fy, 0, fx, fy, c * 1.6 * pulse);
+      g.addColorStop(0, 'rgba(160,200,255,.9)'); g.addColorStop(1, 'rgba(106,167,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(fx, fy, c * 1.6 * pulse, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#cfe2ff'; ctx.beginPath(); ctx.arc(fx, fy, c * .28, 0, 6.2832); ctx.fill();
+      for (i = snake.length - 1; i >= 0; i--){
+        var s = snake[i], a = 1 - i / (snake.length + 6) * .75, sz = c * (i ? .78 : .9), r = c * .26;
+        var px = ox + s.x * c + (c - sz) / 2, py = oy + s.y * c + (c - sz) / 2;
+        ctx.fillStyle = i ? 'rgba(201,162,39,' + a.toFixed(2) + ')' : '#ffe08a';
+        if (!i){ ctx.shadowColor = '#c9a227'; ctx.shadowBlur = 16; }
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(px, py, sz, sz, r); else ctx.rect(px, py, sz, sz);
+        ctx.fill(); ctx.shadowBlur = 0;
+      }
+    }
+  });
+})();
+})();
+</script>
+<script>
+/* ---------- guía visual: un solo paso activo por pantalla, con glow dorado intermitente ---------- */
+(function(){
+'use strict';
+var KEY = 'neuron-guide-v1', IDLE = 2500, PAUSE = 900, HDR = 56;
+function $(s){ return document.querySelector(s); }
+function hit(sel, when){ return function(e){ var t = e.target && e.target.closest ? e.target.closest(sel) : null; return !!t && (!when || when(e)); }; }
+function teamSize(){ var m = /^(\d+)/.exec((($('#qcount') || {}).textContent) || ''); return m ? +m[1] : 0; }
+/* círculo centrado en la punta real de una dendrita (coordenadas del dibujo -> página) */
+function branchRect(){
+  var p = window.__neuronTip ? window.__neuronTip() : null; if (!p) return {l: 0, t: 0, w: 0, h: 0, rad: '50%'};
+  var d = 40; return {l: p.x - d / 2, t: p.y - d / 2, w: d, h: d, rad: '50%'};
+}
+
+/* secuencias: { el: selector, text, done(evento), ev?: tipo de evento, skip?(): ya no aplica, rect?, side? } */
+var SEQ = {
+  neurona: [
+    {el: '#neuron', ev: 'pointerdown', rect: branchRect, side: 'below', text: 'Toca una rama y mira qué pasa', done: hit('#neuron')}
+  ],
+  ensenale: [
+    {el: '#e0', text: 'Pruébala sin enseñarle nada', done: hit('#e0')},
+    {el: '#slist .set:first-child', text: 'Ahora enséñale con pocos ejemplos', done: hit('#slist .set:first-child')},
+    {el: '#slist .set:last-child', text: 'Y ahora con muchos más', done: hit('#slist .set:last-child')},
+    {el: '#bbtn', side: 'above', text: 'Mira lo que aprendió', done: hit('#bbtn')},
+    {el: '#cbtn', side: 'above', text: 'Este es el código de verdad', done: hit('#cbtn')},
+    {el: '#pickc', text: 'Prueba un color tuyo', done: hit('#pickc, #pq button, #ppop button')}
+  ],
+  equipo: [
+    {el: '#qgo', text: 'Una sola neurona se atasca: míralo', skip: function(){ return teamSize() !== 1; }, done: hit('#qgo', function(){ return teamSize() === 1; })},
+    {el: '#qplus', side: 'above', text: 'Súmale otra neurona', done: hit('#qplus')},
+    {el: '#qgo', text: 'Enséñale otra vez', done: hit('#qgo', function(){ return teamSize() > 1; })},
+    {el: '#qbbtn', side: 'above', text: 'Mira en qué se especializó cada una', done: hit('#qbbtn')},
+    {el: '#qpickc', text: 'Prueba un color tuyo', done: hit('#qpickc, #qpq button, #qppop button')}
+  ]
+};
+
+/* progreso: localStorage si existe; si no, solo en memoria */
+var store = {};
+try { store = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { store = {}; }
+if (!store || typeof store !== 'object' || Array.isArray(store)) store = {};
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }
+function isDone(id, i){ return !!(store[id] && store[id][i]); }
+function setDone(id, i, v){ if (!Array.isArray(store[id])) store[id] = []; store[id][i] = v ? 1 : 0; save(); }
+function nextIdx(id){
+  var s = SEQ[id];
+  for (var i = 0; i < s.length; i++) if (!isDone(id, i) && !(s[i].skip && s[i].skip())) return i;
+  return -1;
+}
+
+/* elementos */
+var halo = document.createElement('div'); halo.className = 'guide-halo'; halo.setAttribute('aria-hidden', 'true');
+halo.innerHTML = '<i class="guide-ping"></i><i class="guide-ring"></i>';
+var bubble = document.createElement('div'); bubble.className = 'guide-bubble'; bubble.setAttribute('role', 'status'); bubble.setAttribute('aria-live', 'polite');
+var layer = document.createElement('div'); layer.className = 'guide-layer';
+layer.appendChild(halo); layer.appendChild(bubble); document.body.appendChild(layer);
+var btn = $('#guide-btn');
+
+var st = {id: null, last: performance.now(), force: false, shown: -1, okUntil: 0, okEl: null, okStep: null, secT: 0};
+var bOn = false, bText = '';
+function bubbleShow(text){
+  if (bOn && bText === text) return;
+  var was = bOn; bOn = true; bText = text; bubble.classList.add('on');
+  if (was) bubble.textContent = text;
+  else { bubble.textContent = ''; setTimeout(function(){ if (bOn && bText === text) bubble.textContent = text; }, 60); }
+}
+function bubbleHide(){
+  if (!bOn) return;
+  bOn = false; bText = ''; bubble.classList.remove('on');
+  setTimeout(function(){ if (!bOn) bubble.textContent = ''; }, 500);
+}
+function hide(){ halo.classList.remove('on', 'ok'); st.shown = -1; bubbleHide(); }
+
+function boxOf(el, step){
+  var r = el.getBoundingClientRect(), b;
+  if (step.rect) b = step.rect(r);
+  else {
+    var rad = getComputedStyle(el).borderTopLeftRadius, px = parseFloat(rad);
+    if (rad.indexOf('%') < 0 && px > Math.min(r.width, r.height) / 2) rad = (Math.min(r.width, r.height) / 2) + 'px';
+    b = {l: r.left, t: r.top, w: r.width, h: r.height, rad: rad};
+  }
+  if (!(b.w > 0 && b.h > 0)) return null;
+  if (b.t < HDR - 8 || b.t + b.h > window.innerHeight - 4 || b.l + b.w < 0 || b.l > window.innerWidth) return null;
+  return b;
+}
+function place(b, step, withBubble){
+  var pad = 5;
+  halo.style.left = (b.l - pad) + 'px'; halo.style.top = (b.t - pad) + 'px';
+  halo.style.width = (b.w + 2 * pad) + 'px'; halo.style.height = (b.h + 2 * pad) + 'px';
+  halo.style.borderRadius = b.rad.indexOf('%') < 0 ? (parseFloat(b.rad) + pad) + 'px' : b.rad;
+  var m = Math.min(b.w, b.h) + 2 * pad;
+  halo.style.setProperty('--beat', (1 + Math.max(.03, Math.min(.12, 5 / m))).toFixed(3));
+  halo.style.setProperty('--ping', (1 + Math.max(.08, Math.min(.5, 18 / m))).toFixed(3));
+  halo.classList.add('on');
+  if (!withBubble){ bubbleHide(); return; }
+  bubbleShow(step.text);
+  var bw = bubble.offsetWidth, bh = bubble.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+  var x = Math.max(8, Math.min(vw - bw - 8, b.l + b.w / 2 - bw / 2));
+  var below = b.t + b.h + pad + 10, above = b.t - pad - 10 - bh, y;
+  if ((step.side || 'below') === 'above') y = above >= HDR + 2 ? above : below;
+  else y = below + bh <= vh - 8 ? below : above;
+  bubble.style.left = Math.round(x) + 'px'; bubble.style.top = Math.round(y) + 'px';
+}
+
+function update(now){
+  var id = st.id;
+  if (!id){ hide(); return; }
+  if (st.okUntil){
+    if (st.okUntil > now){
+      var bo = st.okEl && boxOf(st.okEl, st.okStep);
+      if (bo){ halo.classList.add('ok'); place(bo, st.okStep, false); } else hide();
+      return;
+    }
+    st.okUntil = 0; st.okEl = null; st.okStep = null; halo.classList.remove('ok'); hide();
+  }
+  var idx = nextIdx(id);
+  if (idx < 0){ hide(); return; }
+  if (!st.force && now - st.last < IDLE){ hide(); return; }
+  var step = SEQ[id][idx], el = $(step.el);
+  if (!el){ hide(); return; }
+  /* con un panel abierto la guía espera, salvo que el paso sea justo abrir/cambiar de panel */
+  if ($('#' + id + ' .cpanel.open, #' + id + ' .ppop.open') && !el.classList.contains('cbtn')){ hide(); return; }
+  var b = boxOf(el, step);
+  if (!b){ hide(); return; }
+  st.shown = idx;
+  place(b, step, true);
+}
+
+function detect(now){
+  var mid = window.innerHeight / 2, id = null;
+  Array.prototype.slice.call(document.querySelectorAll('main > section')).forEach(function(s){
+    var r = s.getBoundingClientRect();
+    if (r.top <= mid && r.bottom > mid) id = SEQ[s.id] ? s.id : null;
+  });
+  if (id !== st.id){ st.id = id; st.last = now; st.force = false; st.okUntil = 0; hide(); }
+  btn.hidden = !id;
+}
+
+function complete(id, i){
+  var step = SEQ[id][i];
+  var flash = id === st.id && st.shown === i;
+  setDone(id, i, true);
+  if (flash){ st.okUntil = performance.now() + PAUSE; st.okEl = $(step.el); st.okStep = step; }
+}
+function onEvent(e){
+  if (e.target && e.target.closest && e.target.closest('#guide-btn')) return;
+  Object.keys(SEQ).forEach(function(id){
+    SEQ[id].forEach(function(s, i){
+      if ((s.ev || 'click') !== e.type || isDone(id, i)) return;
+      var ok = false; try { ok = s.done(e); } catch (x) {}
+      if (ok) complete(id, i);
+    });
+  });
+}
+document.addEventListener('click', onEvent, true);
+document.addEventListener('pointerdown', onEvent, true);
+function touch(e){
+  if (e.target && e.target.closest && e.target.closest('#guide-btn')) return;
+  st.last = performance.now(); st.force = false;
+}
+['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach(function(n){ document.addEventListener(n, touch, {capture: true, passive: true}); });
+
+function restart(){
+  var id = st.id; if (!id) return;
+  store[id] = []; save();
+  st.force = true; st.okUntil = 0;
+}
+btn.addEventListener('click', restart);
+
+var lastRun = -1;
+function run(){
+  var now = performance.now();
+  if (now - lastRun < 30) return;
+  lastRun = now;
+  if (now - st.secT > 150){ st.secT = now; detect(now); }
+  update(now);
+}
+function frame(){ run(); requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+setInterval(run, 120);   /* respaldo por si el navegador frena requestAnimationFrame (pestaña en segundo plano) */
+window.Guide = {steps: SEQ, restart: restart, state: function(){ return {section: st.id, next: st.id ? nextIdx(st.id) : -1, shown: st.shown, idle: Math.round(performance.now() - st.last), force: st.force, store: store}; }};
+})();
+</script>
+<script type="module">
+/* Las neuronas de las pantallas «Enséñale» y «Ni claro ni oscuro» son las reales de @dniskav/neuron 0.5.1, cargadas desde el CDN. */
+try {
+  var m = await import('https://cdn.jsdelivr.net/npm/@dniskav/neuron@0.5.1/+esm');
+  if (typeof m.NeuronN !== 'function') throw new Error('NeuronN no encontrada');
+  window.__NeuronN = m.NeuronN;
+  if (typeof m.NetworkN === 'function' && typeof m.Adam === 'function' && typeof m.setRandom === 'function' && typeof m.seededRandom === 'function') window.__NeuronLib = {NetworkN: m.NetworkN, Adam: m.Adam, setRandom: m.setRandom, seededRandom: m.seededRandom};
+  window.dispatchEvent(new Event('neuron-lib'));
+} catch (e) {
+  window.dispatchEvent(new Event('neuron-lib-fail'));
+}
+</script>
+</body>
+</html>

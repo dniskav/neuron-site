@@ -1,0 +1,25 @@
+# Neuron
+
+> Neuron (`@dniskav/neuron`) es una librería de redes neuronales en TypeScript puro, sin dependencias. Los gradientes están escritos a mano y el código es educativo: cada clase es autocontenida y las matemáticas se leen directamente.
+
+## Instalación
+
+```sh
+npm install @dniskav/neuron
+```
+
+## Enlaces
+
+- npm: https://www.npmjs.com/package/@dniskav/neuron
+- GitHub: https://github.com/dniskav/neuron
+- Autor: https://dniskav.com
+
+## Secciones del sitio
+
+- Inicio: https://neuron.dniskav.com/
+- Neurona: https://neuron.dniskav.com/#neurona
+- Enséñale: https://neuron.dniskav.com/#ensenale
+- Equipo: https://neuron.dniskav.com/#equipo
+- Snake: https://neuron.dniskav.com/#snake
+- Juegos: https://neuron.dniskav.com/#juegos
+- Historia: https://neuron.dniskav.com/#historia

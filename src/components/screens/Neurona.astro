@@ -1,0 +1,29 @@
+---
+import '../../styles/neurona.css';
+---
+<section id="neurona" aria-labelledby="t-neurona">
+  <div class="nwrap">
+    <div>
+      <div class="ncv rv" style="--d:0"><canvas id="neuron" role="img" aria-label="Dibujo animado de una neurona: señales llegan por las dendritas, el cuerpo se ilumina y dispara un pulso por el axón."></canvas></div>
+      <div class="hint rv" style="--d:1"><i></i>Toca una rama para enviarle una señal</div>
+    </div>
+    <div class="ntext">
+      <p class="eyebrow rv" style="--d:1">La pieza más pequeña</p>
+      <h2 id="t-neurona" class="rv" style="--d:2;margin-top:8px">Así piensa una neurona</h2>
+      <ol class="steps" id="steps">
+        <li class="rv" style="--d:3"><span class="num">1</span><div><h3>Escucha</h3><p>Recibe señales. Unas pesan más que otras.</p></div></li>
+        <li class="rv" style="--d:4"><span class="num">2</span><div><h3>Decide</h3><p>Si juntan lo suficiente, se enciende.</p></div></li>
+        <li class="rv" style="--d:5"><span class="num">3</span><div><h3>Avisa</h3><p>Pasa el mensaje a las siguientes.</p></div></li>
+      </ol>
+      <p class="closing rv" style="--d:6">Neuron empieza aquí: <b>una sola neurona</b>. Con muchas, una serpiente aprende a jugar.</p>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { startGenericNeuron } from '../../viz/GenericNeuron';
+  startGenericNeuron(
+    document.getElementById('neuron') as HTMLCanvasElement,
+    Array.from(document.querySelectorAll<HTMLElement>('#steps li')),
+  );
+</script>

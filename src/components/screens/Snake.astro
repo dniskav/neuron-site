@@ -1,0 +1,15 @@
+---
+import '../../styles/snake.css';
+---
+<section id="snake" aria-labelledby="t-snake">
+  <p class="eyebrow rv" style="--d:0">05 · demo</p>
+  <h2 id="t-snake" class="rv" style="--d:1;margin-top:10px">Snake</h2>
+  <p class="sub rv" style="--d:2">Una serpiente que aprende a moverse, intento tras intento.</p>
+  <div class="frame rv" style="--d:3"><canvas id="snakecv" role="img" aria-label="Adelanto: una serpiente sencilla moviéndose por una cuadrícula"></canvas></div>
+  <span class="soon rv" style="--d:4"><i></i>próximamente: la demo real</span>
+</section>
+
+<script>
+  import { startSnakePreview } from '../../viz/SnakePreview';
+  startSnakePreview(document.getElementById('snakecv') as HTMLCanvasElement);
+</script>

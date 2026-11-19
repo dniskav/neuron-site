@@ -1,0 +1,102 @@
+---
+import '../../styles/lab.css';
+import '../../styles/equipo.css';
+import { PICKER_CELLS, QUICK } from '../../data/ensenale';
+import { EXAM, KS, NTRAIN, TRAIN, kName } from '../../data/equipo';
+import { newTeamCodeState, renderCodeHtml } from '../../data/equipoCode';
+import { cmpPhrase, cmpRowInner } from '../ui/TeamBrainPanel';
+import { computeTeamCmp } from '../../data/equipo';
+import { css } from '../../viz/core/colors';
+
+const cmp = computeTeamCmp();
+const codeHtml = renderCodeHtml(newTeamCodeState());
+const icoCopy = '<svg class="i-copy" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg class="i-ok" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
+const brainSvg = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g><path d="M12 5.2C12 3.9 10.9 3 9.7 3 8.1 3 7 4.1 7.2 5.5 5.5 5.8 4.4 7.1 4.4 8.7c0 .9.4 1.7 1 2.2-.7.6-1 1.5-1 2.4 0 1.6 1.2 2.9 2.7 3 .3 1.6 1.5 2.7 3.1 2.7 1 0 1.8-.7 1.8-1.7z"/><path d="M8.2 9.6c1.2.2 2.2.9 2.7 2M7.6 14.2c1.2-.2 2.2-.9 2.8-1.9"/></g><g transform="matrix(-1 0 0 1 24 0)"><path d="M12 5.2C12 3.9 10.9 3 9.7 3 8.1 3 7 4.1 7.2 5.5 5.5 5.8 4.4 7.1 4.4 8.7c0 .9.4 1.7 1 2.2-.7.6-1 1.5-1 2.4 0 1.6 1.2 2.9 2.7 3 .3 1.6 1.5 2.7 3.1 2.7 1 0 1.8-.7 1.8-1.7z"/><path d="M8.2 9.6c1.2.2 2.2.9 2.7 2M7.6 14.2c1.2-.2 2.2-.9 2.8-1.9"/></g></svg>';
+---
+<section id="equipo" aria-labelledby="t-equipo">
+  <div class="ehead">
+    <p class="eyebrow rv" style="--d:0">04 · en equipo</p>
+    <h2 id="t-equipo" class="rv" style="--d:1">Ni claro ni oscuro</h2>
+    <p class="sub rv" style="--d:2">Ahora la pregunta es otra: ¿es un color intermedio? Una neurona sola solo traza una línea. ¿Y un equipo?</p>
+  </div>
+  <div class="elab">
+    <div class="esets rv" style="--d:3">
+      <p class="elabel">Tamaño del equipo</p>
+      <div class="qteam" role="group" aria-label="Cuántas neuronas tiene el equipo">
+        <button class="qstep" id="qminus" type="button" aria-label="Quitar una neurona" disabled>− neurona</button>
+        <output class="qcount" id="qcount" for="qminus qplus">{kName(1)}</output>
+        <button class="qstep" id="qplus" type="button" aria-label="Añadir una neurona">+ neurona</button>
+      </div>
+      <button class="qgo" id="qgo" type="button">Enséñale</button>
+      <button class="e0" id="q0" type="button">Examinar sin enseñarle</button>
+      <p class="elabel plab">{NTRAIN} colores para aprender</p>
+      <div class="qdots" id="qdots" role="img" aria-label="Los 60 colores con los que aprende: un tercio oscuros, un tercio intermedios y un tercio claros">
+        {TRAIN.map((c) => <i style={`background:${css(c)}`}></i>)}
+      </div>
+      <p class="elabel plab">O prueba un color tuyo</p>
+      <div class="pick" id="qpick">
+        <button class="pickc" id="qpickc" type="button" title="Probar un color" aria-label="Probar un color" aria-haspopup="true" aria-expanded="false" aria-controls="qppop"><span class="pdot" id="qpdot"></span></button>
+        <div class="ppop" id="qppop" role="group" aria-label="Muestras de color para probar" hidden>
+          {PICKER_CELLS.map((hex) => <button type="button" style={`background:${hex}`} tabindex="-1" aria-label={`Probar el color ${hex}`} data-hex={hex}></button>)}
+        </div>
+        <div class="pq" id="qpq" role="group" aria-label="Colores rápidos para probar">
+          {QUICK.map(([hex, name]) => <button type="button" style={`background:${hex}`} title={`Probar ${name}`} aria-label={`Probar ${name}`} data-hex={hex}></button>)}
+        </div>
+      </div>
+      <p class="enote" id="qnote">Estas neuronas son de verdad: aprenden con <b>@dniskav/neuron</b>.</p>
+    </div>
+    <div class="emid rv" style="--d:4">
+      <div class="ecv">
+        <div class="ecode" id="qcode">
+          <button class="cbtn" id="qcbtn" type="button" aria-label="Ver el código" title="Ver el código" aria-expanded="false" aria-controls="qcpanel">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5"/><path d="M16 7l5 5-5 5"/><path d="M14 4l-4 16"/></svg>
+          </button>
+          <div class="cpanel" id="qcpanel" role="region" aria-label="Código fuente de esta pantalla" tabindex="-1" hidden>
+            <button class="ccopy" id="qccopy" type="button" aria-label="Copiar el código" title="Copiar el código" set:html={icoCopy}></button>
+            <pre class="ccode" id="qccode" set:html={codeHtml}></pre>
+          </div>
+          <button class="cbtn bbtn" id="qbbtn" type="button" aria-label="Ver lo que aprendió" title="Ver lo que aprendió" aria-expanded="false" aria-controls="qbpanel" set:html={brainSvg}></button>
+          <div class="cpanel bpanel" id="qbpanel" role="region" aria-label="Lo que aprendió el equipo" tabindex="-1" hidden>
+            <button class="ccopy" id="qbcopy" type="button" aria-label="Copiar el código" title="Copiar el código" set:html={icoCopy}></button>
+            <p class="bhead" id="qbhead">Todo lo que sabe cabe en 4 números</p>
+            <p class="bnote" id="qbnote"></p>
+            <div id="qbgroups"></div>
+            <p class="bsec">Compáralos</p>
+            <div class="crows" id="qcrows" role="group" aria-label="Lo aprendido con 1, 2 y 3 neuronas">
+              {KS.map((k) => (
+                <button type="button" class="crow" data-k={k} aria-pressed="false" title={`${kName(k)}: ${cmp[k].pct} % de aciertos`} aria-label={`${kName(k)}: ${cmp[k].pct} % de aciertos. Ver su código.`} set:html={cmpRowInner(k, cmp[k])}></button>
+              ))}
+            </div>
+            <p class="bphrase" id="qbphrase">{cmpPhrase(cmp)}</p>
+            <pre class="ccode" id="qbcode"></pre>
+          </div>
+        </div>
+        <canvas id="qneuron" role="img" aria-label="Una red real: tres entradas, rojo, verde y azul, llegan a las neuronas del equipo; la última decide y tiene una sola salida, intermedio o no. Al aprender, después de responder llega la corrección y las conexiones cambian de grosor; en el examen solo responde."></canvas>
+      </div>
+      <p class="eleg" id="qeleg"><span id="qlg-a"><b>Aprender:</b> responde y la <i>corrigen</i>.</span> <span id="qlg-e"><b>Examen:</b> solo responde.</span><br />Más grueso = cuenta más · cortado = resta.<br />Cada neurona se llena con lo que le llega. Si pasa su línea dorada, se enciende y avisa a la siguiente.</p>
+      <p class="estatus" id="qstatus">Equipo nuevo: {kName(1)} · pulsa «Enséñale»</p>
+      <p class="exlab">Examen: 12 colores nuevos · ¿intermedio?</p>
+      <div class="exam" id="qexam" role="group" aria-label="Los 12 colores del examen">
+        {EXAM.map((c, i) => <div class="ex" aria-label={`Color ${i + 1} del examen`}><i style={`background:${css(c)}`}></i><span></span></div>)}
+      </div>
+    </div>
+    <div class="eside rv" style="--d:5">
+      <div class="flask"><canvas id="qflask" role="img" aria-label="Frasco que se llena según los aciertos del examen"></canvas></div>
+      <p class="ephrase" id="qphrase"></p>
+      <p class="jarlab">Comparar · neuronas y aciertos</p>
+      <div class="jars" id="qjars">
+        {KS.map((k) => (
+          <div class="jar empty" data-k={k} title={kName(k)}>
+            <div class="jb"><div class="liq" style="--h:0%;--q:0"></div></div><span class="jl">{k}</span><span class="jp">–</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+  <p class="vh" id="qlive" aria-live="polite"></p>
+</section>
+
+<script>
+  import { startEquipo } from './equipoScreen';
+  startEquipo();
+</script>
