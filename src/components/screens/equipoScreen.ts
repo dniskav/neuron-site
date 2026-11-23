@@ -31,7 +31,7 @@ import { CodePanel } from '../ui/CodePanel';
 import { dockEls, linkPanels } from '../ui/dock';
 import { Jars } from '../ui/Jars';
 import { Narrator } from '../ui/Narrator';
-import { brainAria, mountBrainMeter } from '../ui/mountMeter';
+import { brainAria, mountBrainMeter, pctCaption } from '../ui/mountMeter';
 import { ExamChips, ProgressDots } from '../ui/Strips';
 import { TeamBrainPanel } from '../ui/TeamBrainPanel';
 
@@ -87,7 +87,7 @@ export function startEquipo(): void {
   let K = 1;
   let st: State = { phase: 'idle', k: 1, net: newTeam(1), trained: false, idx: 0, sp: 0, seen: 0, pass: 0, rt: 0, eidx: 0, et: 0, done: 0, correct: 0, yes: 0, tags: null };
   let nv: NetworkView = new NetworkView(st.net, viewOptions(1), teamLayout(1));
-  let items: Item[] = [], labelShown = '?', tagT = 0;
+  let items: Item[] = [], pctShown: number | null = null, tagT = 0;
   const meter = new BrainMeter(1);
   meter.setModel(st.net); meter.track(nv.observed, BRAIN_SCALE);
 
@@ -119,7 +119,7 @@ export function startEquipo(): void {
     nv = new NetworkView(net, viewOptions(k), teamLayout(k));
     meter.setModel(net); meter.track(nv.observed, BRAIN_SCALE);
     st = { phase: 'idle', k, net, trained: false, idx: 0, sp: 0, seen: 0, pass: 0, rt: 0, eidx: 0, et: 0, done: 0, correct: 0, yes: 0, tags: null };
-    items = []; labelShown = '?'; tagT = 0;
+    items = []; pctShown = null; tagT = 0;
     nar.phrase(); resetMarks(); setUI();
     code.reset({ k, trained: false });
     setLeg('exam');
@@ -180,7 +180,7 @@ export function startEquipo(): void {
   function finish(): void {
     const pct = Math.round((st.correct / 12) * 100), k = st.k;
     code.cur(null);
-    st.phase = 'done'; labelShown = pct + '%';
+    st.phase = 'done'; pctShown = pct;
     const sc = { ok: st.correct, yes: st.yes }, tags = specTags(st.net);
     st.tags = tags; tagT = reduced ? 1 : 0;
     if (st.trained) { results[k] = pct; setJar(k, pct); }
@@ -219,7 +219,7 @@ export function startEquipo(): void {
     if (it.kind === 'exam') {
       F.answer({ a: it.a, p: it.p, ok: it.ok, era: null, hold: 1.3 });
       chips.mark(it.i, it.ok); st.done++; if (it.ok) st.correct++; st.yes += it.a;
-      labelShown = Math.round((st.correct / 12) * 100) + '%';
+      pctShown = Math.round((st.correct / 12) * 100);
       it.dead = true;
       if (st.done >= 12) finish();
     } else {
@@ -371,7 +371,7 @@ export function startEquipo(): void {
     },
   });
   const meterLoop = mountBrainMeter({
-    canvas: fcv, meter, reduced, label: () => labelShown,
+    canvas: fcv, meter, reduced, caption: { el: $('qmetercap'), text: () => pctCaption(pctShown) },
     aria: () => brainAria(meter, st.phase === 'done' ? Math.round((st.correct / 12) * 100) : null, 'de aciertos en el examen'),
   });
 

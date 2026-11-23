@@ -114,6 +114,7 @@
 /* el cerebro (sustituye al frasco): más pequeño, una sección por neurona */
 .meter{position:relative;flex:none;height:128px;margin:0 auto;width:100%;max-width:240px}
 .meter canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.mcap{margin:2px 0 0;text-align:center;font-size:13px;line-height:1.3;color:var(--mute)}
 .ephrase{min-height:4.6em;margin-top:8px;font-size:15px;line-height:1.35;color:#d6d1c0;text-align:center}
 .ephrase small{display:block;margin-top:3px;font-family:var(--mono);font-size:11px;color:var(--mute)}
 .jars{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:6px}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { NeuronN } from '@dniskav/neuron';
-import { BrainMeter, changeFrac, fillOf, lobeIndex, neuronCount } from '../src/viz/BrainMeter';
+import { BrainMeter, changeFrac, fillOf, fmtCount, lobeIndex, neuronCount } from '../src/viz/BrainMeter';
 import { BH, BW, X0, X1, YBOT, YTOP, cutX } from '../src/viz/brainShape';
 import { ObservedModel } from '../src/viz/observe';
 import { newTeam, structOf, LR, TRAIN, EPOCHS as EQ_EPOCHS, BRAIN_SCALE as EQ_SCALE, labelOf as eqLabel, trainPass } from '../src/data/equipo';
@@ -16,6 +16,7 @@ function recCtx(): { ctx: CanvasRenderingContext2D; calls: Record<string, number
     get(t, k: string) {
       if (k === 'createRadialGradient' || k === 'createLinearGradient') return () => grad;
       if (k === 'fillRect') return (x: number, _y: number, w: number) => { calls[k] = (calls[k] || 0) + 1; rects.push({ x, w, fill: String(t.fillStyle) }); };
+      if (k === 'measureText') return (txt: string) => ({ width: txt.length * 0.6 * (parseFloat(String(t.font).replace(/^\d+ /, '')) || 10) });
       if (k === 'fillText') return (txt: string) => { texts.push(txt); };
       if (k === 'fill') return () => { calls[k] = (calls[k] || 0) + 1; if (/255,236,160/.test(String(t.fillStyle))) flashes.push(String(t.fillStyle)); };
       if (k in t) return t[k];
@@ -65,7 +66,7 @@ describe('BrainMeter: secciones = neuronas del modelo real', () => {
   it('se dibujan todas las divisiones (n - 1) también con muchas secciones', () => {
     [1, 4, 9, 40].forEach((n) => {
       const m = new BrainMeter(n), { ctx, calls } = recCtx();
-      m.draw(ctx, 60, 45, 1, '?');
+      m.draw(ctx, 60, 45, 1);
       const withNone = calls.stroke;
       // tronco + surcos + contorno + (n - 1) divisiones, cada una en oscuro y en claro (sin llenado no hay superficie de líquido)
       expect(withNone).toBe(3 + 2 * (n - 1));
@@ -121,15 +122,30 @@ describe('BrainMeter: cada sección se llena con lo que aprendió SU neurona (ca
     m.ease(1, true); expect(m.fill[0]).toBeCloseTo(m.goal[0], 12);
   });
   it('se dibuja el líquido solo en las secciones con algo (una pasada de líquido por sección llena)', () => {
-    const empty = recCtx(); new BrainMeter(4).draw(empty.ctx, 200, 150, 1, '?');
+    const empty = recCtx(); new BrainMeter(4).draw(empty.ctx, 200, 150, 1);
     const m = new BrainMeter(4); m.setTravel([100, 0, 100, 0], 10); m.ease(1, true);
-    const two = recCtx(); m.draw(two.ctx, 200, 150, 1, '?');
+    const two = recCtx(); m.draw(two.ctx, 200, 150, 1);
     expect((two.calls.stroke || 0) - (empty.calls.stroke || 0)).toBe(2);
   });
-  it('el número del centro es el % de la red entera y NO llena el cerebro', () => {
+  it('el número del centro son los ajustes (no el %) y NO llena el cerebro', () => {
     const m = new BrainMeter(2), { ctx, texts } = recCtx();
-    m.draw(ctx, 200, 150, 1, '92%');
-    expect(texts).toEqual(['92%']); expect(m.level()).toBe(0);
+    m.setAdjustments(12345); m.draw(ctx, 200, 150, 1);
+    expect(texts).toEqual(['12.345', 'ajustes']); expect(m.level()).toBe(0);
+    const one = recCtx(); m.setAdjustments(1); m.draw(one.ctx, 200, 150, 1);
+    expect(one.texts).toEqual(['1', 'ajuste']);
+  });
+  it('los ajustes cuentan un train real cada uno (venga de donde venga) y vuelven a 0 con una red nueva', () => {
+    const net = newNeuron(), obs = new ObservedModel(net), m = new BrainMeter(1);
+    m.setModel(net); m.track(obs, ENS_SCALE);
+    expect(m.adjustments()).toBe(0);
+    obs.train([0.2, 0.4, 0.6], 1, ENS_LR);
+    for (let i = 0; i < 9; i++) net.train([0.1, 0.1, 0.1], 0, ENS_LR);
+    expect(obs.steps).toBe(10); expect(m.adjustments()).toBe(10);
+    const fresh = newNeuron(); m.setModel(fresh); m.track(new ObservedModel(fresh), ENS_SCALE);
+    expect(m.adjustments()).toBe(0);
+  });
+  it('fmtCount: punto de miles como en español', () => {
+    expect([0, 7, 999, 1000, 1234, 120000, 1234567].map(fmtCount)).toEqual(['0', '7', '999', '1.000', '1.234', '120.000', '1.234.567']);
   });
   it('escalas medidas: bien entrenado casi lleno, sin entrenar vacío (cada modelo real)', () => {
     // Enséñale: 34 ejemplos y 40 repasos; sin enseñar nada
@@ -200,7 +216,7 @@ describe('BrainMeter: el destello de cada sección sale del Δ real de SU neuron
     const m = new BrainMeter(4);
     m.learned(1, 0.3); m.learned(3, 0.9);
     const { ctx, flashes } = recCtx();
-    m.draw(ctx, 200, 150, 1, '?');
+    m.draw(ctx, 200, 150, 1);
     expect(flashes).toHaveLength(2);                      // solo las secciones 1 y 3, en ese orden
     const alpha = (f: string): number => parseFloat(f.split(',')[3]);
     expect(alpha(flashes[1]) / alpha(flashes[0])).toBeCloseTo(3, 1);

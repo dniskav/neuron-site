@@ -14,8 +14,10 @@ import { neuronsOf, type NeuronDelta, type ObservableModel, type ObservedModel }
  *    satura: `1 − exp(−cambio / escala)`. La escala es de cada modelo (ver `BRAIN_SCALE` en `src/data/*`): un modelo bien
  *    entrenado queda casi lleno y uno sin entrenar, vacío. Una red nueva empieza vacía.
  *  - DESTELLO: cuando una neurona cambia sus pesos al aprender, SU sección destella en proporción a su |Δw|+|Δb| real.
- *  - EL NÚMERO del centro es el % de aciertos de la red ENTERA (no existe un «% por neurona»): lo pone la pantalla y NO
- *    llena el cerebro. Un cerebro lleno con un % bajo es correcto: la neurona ha cambiado mucho y aun así no puede con la tarea.
+ *  - EL NÚMERO del centro son los AJUSTES: cuántas veces ha aprendido la red desde que se creó (`ObservedModel.steps`, un
+ *    `train` real cada una, que mueve todos sus pesos un poco). No se satura: sigue subiendo mientras entrena, aunque ya
+ *    acierte todo. El % de aciertos de la red ENTERA va fuera, en texto (lo pone la pantalla); no existe un «% por neurona».
+ *    Un cerebro lleno con un % bajo es correcto: la neurona ha cambiado mucho y aun así no puede con la tarea.
  *
  * Con muchas secciones aplica el nivel de detalle de todo el sitio (`lod.ts`): las divisiones se afinan pero están todas.
  */
@@ -31,6 +33,11 @@ export function changeFrac(delta: NeuronDelta, ref: number): number {
 /** Cuánto se llena una sección con `travel` = Σ|Δw| + |Δb| acumulado de su neurona; `scale` es el cambio con el que se llena al 63 %. */
 export function fillOf(travel: number, scale: number): number {
   return 1 - Math.exp(-Math.max(0, travel) / scale);
+}
+
+/** Un número con punto de miles, como se escribe en español: 1234 → «1.234». */
+export function fmtCount(n: number): string {
+  return String(Math.max(0, Math.floor(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
 /** Cuántas neuronas tiene el modelo real (todas las capas): una `NeuronN` es 1; `NetworkN([3, 8, 1])` son 9. */
@@ -58,6 +65,7 @@ export class BrainMeter {
   lod: Lod = 'full';
   private src: ObservedModel | null = null;
   private scale = 1;
+  private manualSteps = 0;
 
   constructor(lobes = 1) {
     this.lobes = Math.max(1, Math.floor(lobes));
@@ -80,7 +88,11 @@ export class BrainMeter {
   /** Índice de la sección de la neurona `neuron` de la capa `layer` del modelo. */
   lobeOf(model: ObservableModel, layer: number, neuron: number): number { return lobeIndex(model, layer, neuron); }
   /** Red nueva: toma las secciones de la estructura REAL del modelo y vacía el cerebro (también si son las mismas). */
-  setModel(model: ObservableModel): void { this.src = null; this.setLobes(neuronCount(model)); }
+  setModel(model: ObservableModel): void { this.src = null; this.manualSteps = 0; this.setLobes(neuronCount(model)); }
+  /** Los ajustes que lleva la red: cuántos `train` reales ha hecho desde que se creó (ver `ObservedModel.steps`). */
+  adjustments(): number { return this.src ? this.src.steps : this.manualSteps; }
+  /** Pone a mano los ajustes (sin `track`). */
+  setAdjustments(n: number): void { this.manualSteps = Math.max(0, Math.floor(n)); }
   /** Que el llenado lea lo que cambia cada neurona del modelo observado (de la red nueva); `scale`: ver `fillOf`. */
   track(obs: ObservedModel, scale: number): void { this.src = obs; this.scale = scale; }
   /** Pone a mano el cambio acumulado de cada sección (en el orden de las neuronas) y la escala. Sin `track`. */
@@ -135,7 +147,7 @@ export class BrainMeter {
     ctx.stroke();
   }
 
-  draw(ctx: CanvasRenderingContext2D, w: number, h: number, t: number, labelShown: string, labelSize = 30): void {
+  draw(ctx: CanvasRenderingContext2D, w: number, h: number, t: number, labelSize = 30): void {
     const s = Math.min(w / BW, h / BH), ox = (w - BW * s) / 2, oy = (h - BH * s) / 2, n = this.lobes, q = this.level();
     this.lod = lodOf(((X1 - X0) * s) / n, this.lod);
     const dv = this.lod === 'full' ? [0.5, 1.4] : this.lod === 'compact' ? [0.4, 1.1] : [0.3, 0.9];
@@ -175,11 +187,21 @@ export class BrainMeter {
     ctx.restore();
     brainPath(ctx);
     ctx.strokeStyle = 'rgba(255,255,255,.34)'; ctx.lineWidth = 2; ctx.stroke();
+    // el centro: los ajustes que lleva (no se satura); con 0, apagado. Se encoge para caber hasta con cientos de miles.
+    const steps = this.adjustments(), num = fmtCount(steps), font = '"Inter Tight",system-ui,sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = '600 ' + labelSize + 'px "Inter Tight",system-ui,sans-serif';
     ctx.shadowColor = 'rgba(0,0,0,.65)'; ctx.shadowBlur = 8;
-    ctx.fillStyle = labelShown === '?' ? 'rgba(242,239,230,.4)' : '#fff';
-    ctx.fillText(labelShown, 100, 56);
+    let size = labelSize;
+    ctx.font = '600 ' + size + 'px ' + font;
+    const maxW = 120;
+    if (ctx.measureText(num).width > maxW) { size = Math.max(10, size * maxW / ctx.measureText(num).width); ctx.font = '600 ' + size + 'px ' + font; }
+    // la palabra, nunca por debajo de 12 px reales (en un cerebro pequeño ocupa más del dibujo)
+    const sub = Math.max(15, 12 / s), y = 52 - sub * 0.45;
+    ctx.fillStyle = steps === 0 ? 'rgba(242,239,230,.4)' : '#fff';
+    ctx.fillText(num, 100, y);
+    ctx.font = '500 ' + sub.toFixed(1) + 'px ' + font;
+    ctx.fillStyle = steps === 0 ? 'rgba(242,239,230,.4)' : 'rgba(242,239,230,.85)';
+    ctx.fillText(steps === 1 ? 'ajuste' : 'ajustes', 100, y + size * 0.5 + sub * 0.62 + 2);
     ctx.shadowBlur = 0;
     ctx.restore();
   }

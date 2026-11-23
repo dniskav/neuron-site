@@ -28,7 +28,7 @@ import { dockEls, linkPanels } from '../ui/dock';
 import { ExamChips } from '../ui/Strips';
 import { Jars } from '../ui/Jars';
 import { Narrator } from '../ui/Narrator';
-import { brainAria, mountBrainMeter } from '../ui/mountMeter';
+import { brainAria, mountBrainMeter, pctCaption } from '../ui/mountMeter';
 import { newCodeState, rawText, renderCodeHtml, type CodeState } from '../../data/ensenaleCode';
 
 type Phase = 'idle' | 'feed' | 'review' | 'settle' | 'exam' | 'done';
@@ -61,7 +61,7 @@ export function startEnsenale(): void {
   const results: Record<number, number> = {};
 
   let st: State = { phase: 'idle', k: null, net: null, set: [], idx: 0, sp: 0, seen: 0, pass: 1, rt: 0, eidx: 0, et: 0, done: 0, correct: 0 };
-  let items: Item[] = [], nv: NetworkView | null = null, labelShown = '?';
+  let items: Item[] = [], nv: NetworkView | null = null, pctShown: number | null = null;
   const idle = new NeuronView({ layer: 0, neuron: 0 }, threeInputGeometry());
   let view = idle;
   const meter = new BrainMeter(1);
@@ -111,7 +111,7 @@ export function startEnsenale(): void {
     bindNet(net);
     code.reset({ k, w0: net.weights.slice() });
     chips.reset();
-    labelShown = '?'; nar.phrase();
+    pctShown = null; nar.phrase();
     markActive(k); setLeg(k ? 'learn' : 'exam');
     view.ripple(false);
     say(k ? 'Neurona nueva. Le enseñas ' + k + ' colores.' : 'Neurona nueva, sin enseñarle nada.');
@@ -133,7 +133,7 @@ export function startEnsenale(): void {
   function finish(): void {
     const k = st.k as number, pct = Math.round((st.correct / 12) * 100);
     code.cur(null);
-    st.phase = 'done'; results[k] = pct; labelShown = pct + '%';
+    st.phase = 'done'; results[k] = pct; pctShown = pct;
     setJar(k, pct);
     const p = phrase(k, pct);
     nar.phrase(p.m, p.extra);
@@ -164,7 +164,7 @@ export function startEnsenale(): void {
     if (it.kind === 'exam') {
       view.answer({ a: it.a, p: it.p, ok: it.ok, era: null, hold });
       chips.mark(it.i, it.ok); st.done++; if (it.ok) st.correct++;
-      labelShown = Math.round((st.correct / 12) * 100) + '%';
+      pctShown = Math.round((st.correct / 12) * 100);
       it.dead = true;
       if (st.done >= 12) finish();
     } else {
@@ -271,7 +271,7 @@ export function startEnsenale(): void {
     },
   });
   const meterLoop = mountBrainMeter({
-    canvas: fcv, meter, reduced, label: () => labelShown,
+    canvas: fcv, meter, reduced, caption: { el: $('emetercap'), text: () => pctCaption(pctShown) },
     aria: () => brainAria(meter, st.phase === 'done' ? Math.round((st.correct / 12) * 100) : null, 'de aciertos en el examen'),
   });
 

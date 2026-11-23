@@ -99,7 +99,7 @@
   #paleta .pstripbox{order:13;margin:0;gap:8px;flex-direction:row}
   #paleta .pmeter{width:84px;height:63px}
   #paleta .pnote{margin:2px 0 0;max-width:none;font-size:12px;line-height:1.25}
-  #paleta .pcount{margin:0 0 3px;font-size:11px;white-space:nowrap}
+  #paleta .pcount{margin:0 0 3px;font-size:11px;white-space:nowrap;letter-spacing:-.02em}
   #paleta .pstrip{gap:2px}
   #paleta .pstrip i{width:11px;height:11px}
   #paleta .pstrip i.ok::after,#paleta .pstrip i.bad::after{font-size:8px}

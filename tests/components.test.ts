@@ -7,7 +7,7 @@ import { Jars } from '../src/components/ui/Jars';
 import { Narrator } from '../src/components/ui/Narrator';
 import { ExamChips, ProgressDots, ResultStrip, stripHtml } from '../src/components/ui/Strips';
 import { dockEls } from '../src/components/ui/dock';
-import { brainAria, brainName } from '../src/components/ui/mountMeter';
+import { brainAria, brainName, pctCaption } from '../src/components/ui/mountMeter';
 import { BrainMeter } from '../src/viz/BrainMeter';
 import { FakeEl, FakeRoot, fakeChip, installDom } from './helpers/fakeDom';
 
@@ -143,9 +143,10 @@ describe('brainAria: el cerebro dice lo que aprendió y, aparte, el % de la red 
   it('vacío, con aprendizaje y con %', () => {
     const m = new BrainMeter(3);
     expect(brainName(1)).toBe('Cerebro de 1 neurona'); expect(brainName(3)).toBe('Cerebro de 3 neuronas');
-    expect(brainAria(m, null)).toBe('Cerebro de 3 neuronas, vacío: todavía no ha aprendido nada');
-    m.setTravel([100, 100, 100], 10); m.ease(1, true);
-    expect(brainAria(m, 92, 'de aciertos')).toBe('Cerebro de 3 neuronas, lleno al 100 por ciento con lo que ha aprendido; 92 por ciento de aciertos');
+    expect(brainAria(m, null)).toBe('Cerebro de 3 neuronas, vacío: todavía no ha aprendido nada; 0 ajustes');
+    m.setTravel([100, 100, 100], 10); m.ease(1, true); m.setAdjustments(1500);
+    expect(brainAria(m, 92, 'de aciertos')).toBe('Cerebro de 3 neuronas, lleno al 100 por ciento con lo que ha aprendido; 1.500 ajustes; 92 por ciento de aciertos');
+    expect(pctCaption(null)).toBe('aún sin examen'); expect(pctCaption(87)).toBe('acierta el 87 %');
   });
 });
 

@@ -155,7 +155,7 @@ export function startPaleta(): void {
   const busy = (): boolean => phase !== 'idle' || queue.left > 0 || rv.active;
   const okCount = (): number => recent.filter(Boolean).length;
   const strip = new ResultStrip($('pastrip'), countEl, {
-    count: (ok, n, extra) => 'Atrapadas: ' + ok + ' de ' + n + extra,
+    count: (ok, n, extra) => ok + '/' + n + ' atrapadas (' + Math.round((ok / n) * 100) + ' %)' + extra,
     empty: 'Ninguna bola todavía',
     aria: (ok, n) => 'Las últimas ' + n + ' bolas: ' + ok + ' atrapadas',
     emptyAria: 'Las últimas bolas: todavía ninguna',
@@ -637,7 +637,6 @@ export function startPaleta(): void {
   const meterLoop = mountBrainMeter({
     canvas: mcv, meter, reduced, dt: (dt) => pause.scale(dt),
     labelSize: 40,
-    label: () => (recent.length ? Math.round((okCount() / recent.length) * 100) + '%' : '?'),
     aria: () => brainAria(meter, recent.length ? Math.round((okCount() / recent.length) * 100) : null, 'de bolas atrapadas'),
   });
   function redraw(): void { fieldLoop.redraw(); netLoop.redraw(); meterLoop.redraw(); }

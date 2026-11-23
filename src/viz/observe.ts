@@ -69,6 +69,11 @@ export class ObservedModel {
    * librería no se toca): el camino recorrido, no solo la distancia entre dos fotos.
    */
   readonly travel: number[][];
+  /**
+   * Cuántas veces ha aprendido este modelo desde que se creó (red nueva = 0): una por cada `train` real, venga de donde
+   * venga. Cada una ajusta TODOS sus pesos y sesgos un poco, así que sigue subiendo aunque la red ya acierte todo.
+   */
+  steps = 0;
   private step: NeuronSnap[][];
   constructor(public readonly model: ObservableModel) {
     this.last = snapshot(model);
@@ -80,6 +85,7 @@ export class ObservedModel {
       const now = snapshot(model);
       diff(this.step, now).forEach((layer, li) => layer.forEach((n, ni) => { this.travel[li][ni] += n.mag; }));
       this.step = now;
+      this.steps++;
       return out;
     };
   }
