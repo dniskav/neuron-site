@@ -4,6 +4,7 @@ export const SCREENS = [
   { id: 'neurona', label: 'Neurona' },
   { id: 'ensenale', label: 'Enséñale' },
   { id: 'equipo', label: 'Equipo' },
+  { id: 'paleta', label: 'Paleta' },
   { id: 'snake', label: 'Snake' },
   { id: 'juegos', label: 'Juegos' },
   { id: 'historia', label: 'Historia' },

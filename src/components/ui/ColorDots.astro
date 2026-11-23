@@ -1,0 +1,9 @@
+---
+/** Los puntos de los colores con los que aprende (se maneja con `ProgressDots`). */
+import { css } from '../../viz/core/colors';
+interface Props { id: string; colors: number[][]; label: string }
+const { id, colors, label } = Astro.props as Props;
+---
+<div class="qdots" id={id} role="img" aria-label={label}>
+  {colors.map((c) => <i style={`background:${css(c)}`}></i>)}
+</div>

@@ -1,0 +1,117 @@
+---
+import '../../styles/lab.css';
+import '../../styles/colores.css';
+import { PICKER_CELLS } from '../../data/ensenale';
+import { COLORS, MAX_OUT, countText, N0, PER, PER_DEFAULT, paramCount, quickSamples, trainSet, examSet } from '../../data/colores';
+import { newColoresCodeState, renderCodeHtml } from '../../data/coloresCode';
+import { css } from '../../viz/core/colors';
+
+const per0 = PER_DEFAULT;
+/* muestras rápidas: un ejemplo de cada nombre que conoce y 2 que aún no (la pantalla las recalcula al crecer) */
+const quick = quickSamples(N0);
+const codeHtml = renderCodeHtml({ ...newColoresCodeState(), per: per0 });
+const exam0 = examSet(N0);
+const icoCopy = '<svg class="i-copy" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg class="i-ok" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
+const brainSvg = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g><path d="M12 5.2C12 3.9 10.9 3 9.7 3 8.1 3 7 4.1 7.2 5.5 5.5 5.8 4.4 7.1 4.4 8.7c0 .9.4 1.7 1 2.2-.7.6-1 1.5-1 2.4 0 1.6 1.2 2.9 2.7 3 .3 1.6 1.5 2.7 3.1 2.7 1 0 1.8-.7 1.8-1.7z"/><path d="M8.2 9.6c1.2.2 2.2.9 2.7 2M7.6 14.2c1.2-.2 2.2-.9 2.8-1.9"/></g><g transform="matrix(-1 0 0 1 24 0)"><path d="M12 5.2C12 3.9 10.9 3 9.7 3 8.1 3 7 4.1 7.2 5.5 5.5 5.8 4.4 7.1 4.4 8.7c0 .9.4 1.7 1 2.2-.7.6-1 1.5-1 2.4 0 1.6 1.2 2.9 2.7 3 .3 1.6 1.5 2.7 3.1 2.7 1 0 1.8-.7 1.8-1.7z"/><path d="M8.2 9.6c1.2.2 2.2.9 2.7 2M7.6 14.2c1.2-.2 2.2-.9 2.8-1.9"/></g></svg>';
+---
+<section id="colores" aria-labelledby="t-colores">
+  <div class="ehead">
+    <p class="eyebrow rv" style="--d:0">04 · ponerle nombre</p>
+    <h2 id="t-colores" class="rv" style="--d:1">¿Qué color es?</h2>
+    <p class="sub rv" style="--d:2">Varias neuronas miran el mismo color y cada una responde «¿soy yo?». Gana la que más brilla.</p>
+  </div>
+  <div class="elab">
+    <div class="esets rv" style="--d:3">
+      <div class="ngrow" role="group" aria-label="Crecer la red">
+        <div class="ngrp">
+          <span class="ngl">Nombres</span>
+          <output class="ngn" id="nncount" for="nname" aria-label="Nombres que tiene la red">{N0}</output>
+          <button class="qstep qname" id="nname" type="button" aria-label="Añadir un nombre: una neurona más, copia de la de Enséñale" title="Una neurona más, para un nombre más">+ nombre</button>
+        </div>
+        <button class="nauto" id="nauto" type="button" aria-pressed="false" title="La pantalla se enseña sola, paso a paso">▶ Míralo solo</button>
+      </div>
+      <p class="elabel plab nlabsets">Ejemplos de cada nombre</p>
+      <div class="cseg" id="nsets" role="group" aria-label="Ejemplos de cada nombre">
+        {PER.map((per) => (
+          <button type="button" class={`cset${per === per0 ? ' on' : ''}`} data-per={per} aria-pressed={per === per0 ? 'true' : 'false'} aria-label={`${per} por nombre: ${per * N0} ejemplos`}>
+            <b>{per}</b><span class="res" aria-hidden="true"></span>
+          </button>
+        ))}
+      </div>
+      <button class="qgo" id="ngo" type="button">Enséñale</button>
+      <button class="e0" id="n0" type="button">Examinar sin enseñarle</button>
+      <p class="elabel plab nlabrow"><span id="nnlab">{per0 * N0}</span> colores para aprender</p>
+      <div class="qdots" id="ndots" role="img" aria-label="Los colores con los que aprende">
+        {trainSet(per0, N0).map((e) => <i style={`background:${css(e.c)}`}></i>)}
+      </div>
+      <p class="elabel plab nlabpick">Prueba un color</p>
+      <div class="pick" id="npick">
+        <button class="pickc" id="npickc" type="button" title="Probar un color" aria-label="Probar un color" aria-haspopup="true" aria-expanded="false" aria-controls="nppop"><span class="pdot" id="npdot"></span></button>
+        <div class="ppop" id="nppop" role="group" aria-label="Muestras de color para probar" hidden>
+          {PICKER_CELLS.map((hex) => <button type="button" style={`background:${hex}`} tabindex="-1" aria-label={`Probar el color ${hex}`} data-hex={hex}></button>)}
+        </div>
+        <div class="pq" id="npq" role="group" aria-label="Colores rápidos para probar">
+          {quick.map((q) => <button type="button" style={`background:${q.hex}`} title={q.name} aria-label={`Probar ${q.name}`} data-hex={q.hex}></button>)}
+        </div>
+      </div>
+      <button class="nlink" id="nreset" type="button">volver a empezar</button>
+      <p class="enote" id="nnote">Cada nombre es la neurona de <b>Enséñale</b>, copiada. Varias neuronas juntas, mirando lo mismo, se llaman una <b>capa</b>. Es de verdad: aprende con <b>@dniskav/neuron</b>.</p>
+    </div>
+    <div class="emid rv" style="--d:4">
+      <div class="ecv">
+        <div class="ecode" id="ncode">
+          <p class="ntotal" id="ntotal">{countText(N0)}</p>
+          <button class="cbtn" id="ncbtn" type="button" aria-label="Ver el código" title="Ver el código" aria-expanded="false" aria-controls="ncpanel">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5"/><path d="M16 7l5 5-5 5"/><path d="M14 4l-4 16"/></svg>
+          </button>
+          <div class="cpanel" id="ncpanel" role="region" aria-label="Código fuente de esta pantalla" tabindex="-1" hidden>
+            <button class="ccopy" id="nccopy" type="button" aria-label="Copiar el código" title="Copiar el código" set:html={icoCopy}></button>
+            <pre class="ccode" id="nccode" set:html={codeHtml}></pre>
+          </div>
+          <button class="cbtn bbtn" id="nbbtn" type="button" aria-label="Ver lo que aprendió" title="Ver lo que aprendió" aria-expanded="false" aria-controls="nbpanel" set:html={brainSvg}></button>
+          <div class="cpanel bpanel" id="nbpanel" role="region" aria-label="Lo que aprendió la red" tabindex="-1" hidden>
+            <button class="ccopy" id="nbcopy" type="button" aria-label="Copiar el código" title="Copiar el código" set:html={icoCopy}></button>
+            <div id="nbbody"></div>
+            <pre class="ccode" id="nbcode"></pre>
+          </div>
+        </div>
+        <canvas id="nneuron" role="img" aria-label="Una capa real de neuronas: las tres entradas, rojo, verde y azul, llegan a todas las neuronas; cada una es la neurona de Enséñale, copiada, y responde si el color es su nombre. Gana la que más brilla."></canvas>
+      </div>
+      <div class="nstat">
+        <p class="estatus" id="nstatus">Red nueva: {countText(N0)} · pulsa «Enséñale»</p>
+        <button class="ninfo" id="ninfo" type="button" aria-label="Cómo leer el dibujo" aria-expanded="false" aria-controls="neleg" title="Cómo leer el dibujo">i</button>
+      </div>
+      <p class="eleg" id="neleg" hidden><b>Una capa:</b> cada nombre es la neurona de Enséñale, copiada; todas miran el mismo color.<br /><span id="nlg-a"><b>Aprender:</b> responde y la <i>corrigen</i>.</span> <span id="nlg-e"><b>Examen:</b> solo responde.</span><br />Más grueso = cuenta más · cortado = resta. El anillo de colores muestra con qué tonos se enciende cada neurona.</p>
+      <p class="nautocap" id="nautocap" hidden></p>
+      <p class="nwarn" id="nwarn" aria-live="polite"></p>
+      <div class="nchips" id="nchips" role="group" aria-label="Los nombres de color que la red tiene: gana el que más brilla">
+        {COLORS.slice(0, N0).map((d) => <span class="nchip" style={`--c:${d.color}`}><i></i><span>{d.name}</span></span>)}
+      </div>
+      <div class="ncards ncards-live" id="nzone" aria-live="polite" aria-label="Con qué colores se enciende la neurona elegida"></div>
+      <p class="exlab">Examen: <span id="nexn">{exam0.length}</span> colores nuevos</p>
+      <div class="cexam" id="nexam" role="group" aria-label="Los colores del examen">
+        {exam0.map((e, i) => <i style={`background:${css(e.c)}`} aria-label={`Color ${i + 1} del examen`}></i>)}
+      </div>
+    </div>
+    <div class="eside rv" style="--d:5">
+      <div class="nacc" id="nacc" aria-hidden="true"><span class="nbar"><i id="naccfill" style="width:0%"></i></span><span class="nacct" id="nacctxt">–</span></div>
+      <div class="flask"><canvas id="nflask" role="img" aria-label="Frasco que se llena según los aciertos del examen"></canvas></div>
+      <p class="ephrase" id="nphrase"></p>
+      <p class="jarlab">Comparar · ejemplos y aciertos</p>
+      <div class="jars" id="njars">
+        {PER.map((per) => (
+          <div class="jar empty" data-per={per} title={`${per} por nombre`}>
+            <div class="jb"><div class="liq" style="--h:0%;--q:0"></div></div><span class="jl">{per}</span><span class="jp">–</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+  <p class="vh">La red recibe el rojo, el verde y el azul de un color. Cada nombre es una neurona, la misma neurona de la pantalla Enséñale copiada: recibe los tres colores por sus tres ramas y responde «¿soy yo?». Varias neuronas juntas, mirando lo mismo, se llaman una capa. Gana la neurona que más brilla. La capa empieza con {N0} nombres y crece: se le puede añadir un nombre, o sea una neurona más, hasta {MAX_OUT}. Con todos sabe {paramCount(MAX_OUT)} números. Cada neurona tiene su anillo de colores, que muestra con qué tonos se enciende.</p>
+  <p class="vh" id="nlive" aria-live="polite"></p>
+</section>
+
+<script>
+  import { startColores } from './coloresScreen';
+  startColores();
+</script>

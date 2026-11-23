@@ -45,6 +45,8 @@ export class CodePanel<S extends CodeState> {
     Object.assign(this.cs, patch, { probe: null, cur: null, open: { ej: false, ex: false } });
     this.render();
   }
+  /** Cambia partes del estado SIN borrar la muestra, el ejemplo en curso ni los desplegables abiertos, y vuelve a pintar. */
+  patch(p: Partial<S>): void { Object.assign(this.cs, p); this.render(); }
   probe(c: number[]): void { this.cs.probe = c.slice(); this.cs.mode = 'probe'; this.render(); }
   mode(m: CodeMode): void { this.cs.mode = m; this.applyHL(); }
   /** Ejemplo en curso: 'ej' (aprender) o 'ex' (examen), con su índice; null para ninguno. */

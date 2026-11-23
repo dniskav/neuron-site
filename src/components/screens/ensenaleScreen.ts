@@ -10,12 +10,12 @@
  * hacia atrás; ahí se llama a train y se leen los pesos reales).
  */
 import type { NeuronN } from '@dniskav/neuron';
-import { ALL, EPOCHS, EXAM, FULLN, LR, SIZES, labelOf, newNeuron } from '../../data/ensenale';
+import { ALL, BRAIN_SCALE, EPOCHS, EXAM, FULLN, LR, SIZES, labelOf, newNeuron } from '../../data/ensenale';
 import { computeCmp } from '../../data/ensenaleCompare';
 import { hexRgb } from '../../viz/core/colors';
 import { createLoop } from '../../viz/core/loop';
 import { reducedMotion } from '../../viz/core/motion';
-import { Flask } from '../../viz/Flask';
+import { BrainMeter } from '../../viz/BrainMeter';
 import { threeInputGeometry } from '../../viz/geometry';
 import { NetworkView } from '../../viz/NetworkView';
 import { NeuronView } from '../../viz/NeuronView';
@@ -24,6 +24,11 @@ import { getPager } from '../../viz/Pager';
 import { BrainPanel } from '../ui/BrainPanel';
 import { bindColorPicker } from '../ui/ColorPicker';
 import { CodePanel } from '../ui/CodePanel';
+import { dockEls, linkPanels } from '../ui/dock';
+import { ExamChips } from '../ui/Strips';
+import { Jars } from '../ui/Jars';
+import { Narrator } from '../ui/Narrator';
+import { brainAria, mountBrainMeter } from '../ui/mountMeter';
 import { newCodeState, rawText, renderCodeHtml, type CodeState } from '../../data/ensenaleCode';
 
 type Phase = 'idle' | 'feed' | 'review' | 'settle' | 'exam' | 'done';
@@ -47,47 +52,37 @@ const EXAMD: Dur = { in: 0.75, out: 0.42, back: 0 };
 export function startEnsenale(): void {
   const reduced = reducedMotion();
   const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
-  const cv = $<HTMLCanvasElement>('eneuron'), fcv = $<HTMLCanvasElement>('eflask'), sec = $('ensenale');
-  const e0 = $('e0'), statusEl = $('estatus'), phraseEl = $('ephrase'), liveEl = $('elive'), legEl = $('eleg'), pdot = $('pdot');
-  const cards: Record<number, HTMLElement> = {}, jars: Record<number, HTMLElement> = {};
+  const cv = $<HTMLCanvasElement>('eneuron'), fcv = $<HTMLCanvasElement>('emeter'), sec = $('ensenale');
+  const e0 = $('e0'), legEl = $('eleg'), pdot = $('pdot');
+  const nar = new Narrator({ status: $('estatus'), live: $('elive'), phrase: $('ephrase') });
+  const cards: Record<number, HTMLElement> = {};
   document.querySelectorAll<HTMLElement>('#slist .set').forEach((b) => { cards[+(b.dataset.k as string)] = b; });
-  document.querySelectorAll<HTMLElement>('#jars .jar').forEach((j) => { jars[+(j.dataset.k as string)] = j; });
-  const chips = Array.from(document.querySelectorAll<HTMLElement>('#exam .ex'));
+  const jars = new Jars($('jars')), chips = new ExamChips($('exam'));
   const results: Record<number, number> = {};
 
   let st: State = { phase: 'idle', k: null, net: null, set: [], idx: 0, sp: 0, seen: 0, pass: 1, rt: 0, eidx: 0, et: 0, done: 0, correct: 0 };
-  let items: Item[] = [], nv: NetworkView | null = null, target = 0, labelShown = '?';
+  let items: Item[] = [], nv: NetworkView | null = null, labelShown = '?';
   const idle = new NeuronView({ layer: 0, neuron: 0 }, threeInputGeometry());
   let view = idle;
-  const flask = new Flask();
+  const meter = new BrainMeter(1);
   const T = { s: 1, ox: 0, oy: 0 };
 
   // ---------- paneles ----------
-  const code = new CodePanel<CodeState>({ pre: $('ccode'), btn: $('cbtn'), panel: $('cpanel'), wrap: $('ecode'), copy: $('ccopy') }, { newState: newCodeState, renderHtml: renderCodeHtml, rawText });
-  const brain = new BrainPanel(
-    { btn: $('bbtn'), panel: $('bpanel'), wrap: $('ecode'), copy: $('bcopy'), root: $('bpanel') },
-    () => ({ net: st.net, k: st.k || 0, results }),
-    computeCmp(),
-  );
-  code.panel.exclusive(brain.panel);
-  brain.panel.exclusive(code.panel);
+  const dock = dockEls('', 'ecode');
+  const code = new CodePanel<CodeState>(dock.code, { newState: newCodeState, renderHtml: renderCodeHtml, rawText });
+  const brain = new BrainPanel(dock.brain, () => ({ net: st.net, k: st.k || 0, results }), computeCmp());
+  linkPanels(code, brain);
 
   // ---------- interfaz ----------
-  const setStatus = (t: string): void => { statusEl.textContent = t; };
-  const say = (t: string): void => { liveEl.textContent = t; };
+  const setStatus = (t: string): void => nar.status(t), say = (t: string): void => nar.say(t);
   function setLeg(m: 'learn' | 'exam'): void { legEl.className = 'eleg m-' + m; code.mode(m); }
   function markActive(k: number): void {
     SIZES.forEach((s) => { cards[s].classList.toggle('on', s === k); cards[s].setAttribute('aria-pressed', s === k ? 'true' : 'false'); });
     e0.classList.toggle('on', k === 0); e0.setAttribute('aria-pressed', k === 0 ? 'true' : 'false');
-    Object.keys(jars).forEach((s) => jars[+s].classList.toggle('on', +s === k));
+    jars.highlight(k);
   }
   function setJar(k: number, pct: number): void {
-    const j = jars[k];
-    j.classList.remove('empty');
-    const l = j.querySelector('.liq') as HTMLElement;
-    l.style.setProperty('--h', pct + '%'); l.style.setProperty('--q', (pct / 100).toFixed(2));
-    (j.querySelector('.jp') as HTMLElement).textContent = pct + '%';
-    j.title = (k ? k + ' ejemplos' : 'Sin enseñarle') + ': ' + pct + ' % de aciertos';
+    jars.set(k, pct, (k ? k + ' ejemplos' : 'Sin enseñarle') + ': ' + pct + ' % de aciertos');
     if (cards[k]) (cards[k].querySelector('.res') as HTMLElement).textContent = pct + ' %';
   }
   function phrase(k: number, pct: number): { m: string; extra: string } {
@@ -100,18 +95,13 @@ export function startEnsenale(): void {
     else m = 'Va pillando la idea, pero todavía se equivoca.';
     return { m, extra };
   }
-  function setMark(i: number, ok: boolean): void {
-    chips[i].classList.remove('now'); chips[i].classList.add(ok ? 'ok' : 'bad');
-    (chips[i].lastChild as HTMLElement).textContent = ok ? '✓' : '✗';
-    chips[i].setAttribute('aria-label', 'Color ' + (i + 1) + ' del examen: ' + (ok ? 'acertó' : 'falló'));
-  }
-
   // ---------- director ----------
   function observed(): NetworkView { return nv as NetworkView; }
   function bindNet(net: NeuronN): void {
     st.net = net;
     nv = new NetworkView(net);
     view = nv.single;
+    meter.setModel(net); meter.track(nv.observed, BRAIN_SCALE);
   }
 
   function start(k: number): void {
@@ -120,8 +110,8 @@ export function startEnsenale(): void {
     const net = newNeuron();
     bindNet(net);
     code.reset({ k, w0: net.weights.slice() });
-    chips.forEach((c) => { c.className = 'ex'; (c.lastChild as HTMLElement).textContent = ''; });
-    target = 0; labelShown = '?'; phraseEl.innerHTML = '';
+    chips.reset();
+    labelShown = '?'; nar.phrase();
     markActive(k); setLeg(k ? 'learn' : 'exam');
     view.ripple(false);
     say(k ? 'Neurona nueva. Le enseñas ' + k + ' colores.' : 'Neurona nueva, sin enseñarle nada.');
@@ -143,22 +133,21 @@ export function startEnsenale(): void {
   function finish(): void {
     const k = st.k as number, pct = Math.round((st.correct / 12) * 100);
     code.cur(null);
-    st.phase = 'done'; results[k] = pct; target = st.correct / 12; labelShown = pct + '%';
+    st.phase = 'done'; results[k] = pct; labelShown = pct + '%';
     setJar(k, pct);
     const p = phrase(k, pct);
-    phraseEl.innerHTML = p.m + '<small>' + p.extra + '</small>';
+    nar.phrase(p.m, p.extra);
     setStatus('Examen terminado · ' + st.correct + ' de 12');
     say('Acertó ' + st.correct + ' de 12, un ' + pct + ' por ciento. ' + p.m);
-    fcv.setAttribute('aria-label', 'Frasco lleno al ' + pct + ' por ciento');
   }
   function instant(): void {
     const net = st.net as NeuronN;
     for (let i = 0; i < EPOCHS && st.k; i++) trainPass();
     view.sync(true); observed().observed.resync();
     st.correct = 0;
-    EXAM.forEach((c, n) => { const a = net.predict(c) > 0.5 ? 1 : 0, ok = a === labelOf(c); if (ok) st.correct++; setMark(n, ok); });
-    finish(); flask.lv = target; view.shown = 0;
-    flaskLoop.redraw(); neuronLoop.redraw();
+    EXAM.forEach((c, n) => { const a = net.predict(c) > 0.5 ? 1 : 0, ok = a === labelOf(c); if (ok) st.correct++; chips.mark(n, ok); });
+    finish(); meter.ease(0, true); view.shown = 0;
+    meterLoop.redraw(); neuronLoop.redraw();
   }
   /** El color ya recorrió las 3 dendritas: el cuerpo suma y responde con el predict real. */
   function arrive(it: Item): void {
@@ -174,8 +163,8 @@ export function startEnsenale(): void {
     const hold = it.kind === 'exam' ? 1.3 : (it.d === FULL ? 2.6 : 0.8);
     if (it.kind === 'exam') {
       view.answer({ a: it.a, p: it.p, ok: it.ok, era: null, hold });
-      setMark(it.i, it.ok); st.done++; if (it.ok) st.correct++;
-      target = st.correct / 12; labelShown = Math.round((st.correct / 12) * 100) + '%';
+      chips.mark(it.i, it.ok); st.done++; if (it.ok) st.correct++;
+      labelShown = Math.round((st.correct / 12) * 100) + '%';
       it.dead = true;
       if (st.done >= 12) finish();
     } else {
@@ -197,7 +186,7 @@ export function startEnsenale(): void {
     } else {
       it.t += dt / it.d.back;
       /* a mitad de la vuelta llegan los pesos nuevos y la neurona celebra según SU cambio */
-      if (!it.snapped && it.t >= 0.4) { it.snapped = true; view.learn(it.delta as NeuronDelta); }
+      if (!it.snapped && it.t >= 0.4) { it.snapped = true; meter.learned(0, view.learn(it.delta as NeuronDelta)); }
       if (it.t >= 1) it.dead = true;
     }
   }
@@ -253,7 +242,7 @@ export function startEnsenale(): void {
     } else if (st.phase === 'exam') {
       st.et -= dt;
       if (st.eidx < 12 && st.et <= 0) {
-        chips.forEach((c) => c.classList.remove('now')); chips[st.eidx].classList.add('now');
+        chips.now(st.eidx);
         launch('exam', EXAM[st.eidx], st.eidx, EXAMD); st.eidx++; st.et = 0.85;
       }
     }
@@ -281,11 +270,9 @@ export function startEnsenale(): void {
       ctx.restore();
     },
   });
-  const flaskLoop = createLoop(fcv, {
-    draw(ctx, w, h, dt, t) {
-      flask.ease(target, dt, reduced);
-      flask.draw(ctx, w, h, t, labelShown);
-    },
+  const meterLoop = mountBrainMeter({
+    canvas: fcv, meter, reduced, label: () => labelShown,
+    aria: () => brainAria(meter, st.phase === 'done' ? Math.round((st.correct / 12) * 100) : null, 'de aciertos en el examen'),
   });
 
   // ---------- controles ----------
@@ -293,6 +280,5 @@ export function startEnsenale(): void {
   e0.addEventListener('click', () => start(0));
 
   /* esta pantalla puede ser más alta que la ventana (móvil): la marcamos como activa al cruzar el centro */
-  const pager = getPager();
-  new IntersectionObserver((en) => { if (en[0].isIntersecting) pager.activate(sec); }, { root: pager.main, rootMargin: '-45% 0px -45% 0px', threshold: 0 }).observe(sec);
+  getPager().followCenter(sec);
 }

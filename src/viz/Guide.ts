@@ -28,7 +28,9 @@ const hit = (sel: string, when?: (e: Event) => boolean) => (e: Event): boolean =
   const t = (e.target as Element | null)?.closest?.(sel);
   return !!t && (!when || when(e));
 };
-const teamSize = (): number => { const m = /^(\d+)/.exec($('#qcount')?.textContent || ''); return m ? +m[1] : 0; };
+const numIn = (sel: string): number => { const m = /^(\d+)/.exec($(sel)?.textContent || ''); return m ? +m[1] : 0; };
+const teamSize = (): number => numIn('#qcount');
+const canGrowName = (): boolean => !(($('#nname') as HTMLButtonElement | null)?.disabled);
 
 /** Círculo centrado en la punta real de una dendrita (coordenadas del dibujo → página). */
 function branchRect(): Box {
@@ -58,6 +60,25 @@ export const SEQ: Record<string, Step[]> = {
     { el: '#qgo', text: 'Enséñale otra vez', done: hit('#qgo', () => teamSize() > 1) },
     { el: '#qbbtn', side: 'above', text: 'Mira en qué se especializó cada una', done: hit('#qbbtn') },
     { el: '#qpickc', text: 'Prueba un color tuyo', done: hit('#qpickc, #qpq button, #qppop button') },
+  ],
+  paleta: [
+    { el: '#pago', text: 'Lanza una bola y mira dónde cree la neurona que caerá', done: hit('#pago') },
+    { el: '#pa10', text: 'Lanza varias: cada caída le enseña algo', done: hit('#pa10, #pa100') },
+    { el: '#pawalls', text: 'Ahora ponle paredes: la bola rebota', done: hit('#pawalls') },
+    { el: '#pateam', text: 'Como en Equipo, una sola no puede con los rebotes: pruébalo con un equipo', skip: () => $('#paleta')?.dataset.kind === 'equipo', done: hit('#pateam') },
+    { el: '#pa100', text: 'Y ahora lanza muchas bolas', done: hit('#pa100') },
+    { el: '#pacurve', text: 'Apaga la curva del equipo: con paredes ya no puede con los rebotes', skip: () => { const p = $('#paleta'); return p?.dataset.kind !== 'equipo' || $('#pacurve')?.getAttribute('aria-pressed') !== 'true'; }, done: hit('#pacurve') },
+    { el: '#pacurve', text: 'Y vuelve a encenderla', skip: () => $('#paleta')?.dataset.kind !== 'equipo' || $('#pacurve')?.getAttribute('aria-pressed') === 'true', done: hit('#pacurve') },
+    { el: '#pacont', text: 'Prueba el juego continuo: la paleta devuelve la bola y no se para', done: hit('#pacont') },
+    { el: '#pablock', text: 'Pon un bloque: la red no lo ve, pero vuelve a mirar cuando la bola rebota', done: hit('#pablock') },
+    { el: '#pabbtn', side: 'above', text: 'Mira lo que aprendió', done: hit('#pabbtn') },
+  ],
+  colores: [
+    { el: '#ngo', text: 'Enséñale: ahora solo conoce tres nombres', skip: () => numIn('#nncount') !== 3, done: hit('#ngo', () => numIn('#nncount') === 3) },
+    { el: '#nname', side: 'above', text: 'Le ha llegado un color sin nombre: dale una palabra', skip: () => !canGrowName() || $('#colores')?.dataset.arrived !== '1', done: hit('#nname') },
+    { el: '#ngo', text: 'Enséñale otra vez, con el nombre nuevo', skip: () => numIn('#nncount') <= 3, done: hit('#ngo', () => numIn('#nncount') > 3) },
+    { el: '#nbbtn', side: 'above', text: 'Mira con qué colores se enciende cada neurona', done: hit('#nbbtn') },
+    { el: '#npickc', text: 'Prueba un color tuyo', done: hit('#npickc, #npq button, #nppop button') },
   ],
 };
 
@@ -125,7 +146,7 @@ export function startGuide(): GuideApi {
     if (b.t < HDR - 8 || b.t + b.h > window.innerHeight - 4 || b.l + b.w < 0 || b.l > window.innerWidth) return null;
     return b;
   }
-  function place(b: Box, step: Step, withBubble: boolean): void {
+  function place(b: Box, step: Step, withBubble: boolean, target: HTMLElement | null = null): void {
     const pad = 5;
     halo.style.left = b.l - pad + 'px'; halo.style.top = b.t - pad + 'px';
     halo.style.width = b.w + 2 * pad + 'px'; halo.style.height = b.h + 2 * pad + 'px';
@@ -136,18 +157,75 @@ export function startGuide(): GuideApi {
     halo.classList.add('on');
     if (!withBubble) { bubbleHide(); return; }
     bubbleShow(step.text);
-    const bw = bubble.offsetWidth, bh = bubble.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
-    const x = Math.max(8, Math.min(vw - bw - 8, b.l + b.w / 2 - bw / 2));
-    const below = b.t + b.h + pad + 10, above = b.t - pad - 10 - bh;
-    let y: number;
-    if ((step.side || 'below') === 'above') y = above >= HDR + 2 ? above : below;
-    else y = below + bh <= vh - 8 ? below : above;
-    bubble.style.left = Math.round(x) + 'px'; bubble.style.top = Math.round(y) + 'px';
+    const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
+    const key = [b.l, b.t, b.w, b.h, bw, bh, window.innerWidth, window.innerHeight, step.side, step.text].join('|');
+    if (key !== placedKey) {
+      placedKey = key;
+      const at = bubbleSpot(b, bw, bh, pad, step, target);
+      bubble.style.left = Math.round(at[0]) + 'px'; bubble.style.top = Math.round(at[1]) + 'px';
+    }
+  }
+  let placedKey = '';
+
+  /**
+   * Dónde poner el bocadillo: la posición (encima, debajo, a la derecha o a la izquierda del objetivo, o corrida
+   * hacia un lado) que NO tape otros botones, enlaces ni campos, y que quepa en la ventana. Si todas tapan algo,
+   * la que menos tapa. Sirve igual en todas las pantallas.
+   */
+  function bubbleSpot(b: Box, bw: number, bh: number, pad: number, step: Step, target: HTMLElement | null): [number, number] {
+    const vw = window.innerWidth, vh = window.innerHeight, gap = 10;
+    const others: DOMRect[] = [];
+    document.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [role="button"]').forEach((e) => {
+      if (e === target || (target && (target.contains(e) || e.contains(target))) || layer.contains(e)) return;
+      const r = e.getBoundingClientRect();
+      if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > vh || r.right < 0 || r.left > vw) return;
+      const cv = (e as HTMLElement & { checkVisibility?: (o: object) => boolean }).checkVisibility;
+      if (cv && !cv.call(e, { checkVisibilityCSS: true, visibilityProperty: true })) return;
+      others.push(r);
+    });
+    /* tampoco debe tapar los títulos y subtítulos si hay otro sitio (pesa menos que tapar un botón) */
+    const texts: DOMRect[] = [];
+    document.querySelectorAll<HTMLElement>('section h2, section .sub').forEach((e) => {
+      const r = e.getBoundingClientRect();
+      if (r.width > 4 && r.height > 4 && r.bottom > 0 && r.top < vh) texts.push(r);
+    });
+    /* ni el centro de un lienzo: ahí está lo que se mira (las neuronas), salvo que el lienzo sea el propio objetivo; pesa más que tapar un botón secundario */
+    const centers: DOMRect[] = [];
+    document.querySelectorAll<HTMLCanvasElement>('main canvas').forEach((e) => {
+      if (target && (e === target || target.contains(e) || e.contains(target))) return;
+      const r = e.getBoundingClientRect();
+      if (r.width < 80 || r.height < 60 || r.bottom < 0 || r.top > vh) return;
+      centers.push(new DOMRect(r.left, r.top, r.width, r.height));
+    });
+    const cx = b.l + b.w / 2, cy = b.t + b.h / 2;
+    const above = b.t - pad - gap - bh, below = b.t + b.h + pad + gap, left = b.l - pad - gap - bw, right = b.l + b.w + pad + gap;
+    const xc = cx - bw / 2, yc = cy - bh / 2;
+    const cands: [number, number][] = (step.side || 'below') === 'above'
+      ? [[xc, above], [xc, below], [right, yc], [left, yc], [b.l, above], [b.l + b.w - bw, above], [b.l, below], [b.l + b.w - bw, below]]
+      : [[xc, below], [xc, above], [right, yc], [left, yc], [b.l, below], [b.l + b.w - bw, below], [b.l, above], [b.l + b.w - bw, above]];
+    let best: [number, number] = [0, 0], bs = Infinity;
+    for (const c of cands) {
+      const x = Math.max(8, Math.min(vw - bw - 8, c[0])), y = c[1];
+      let sc = 0;
+      if (y < HDR + 2) sc += (HDR + 2 - y) * 40;
+      if (y + bh > vh - 8) sc += (y + bh - (vh - 8)) * 40;
+      /* tampoco debe tapar el propio objetivo */
+      const hit = (r: { left: number; top: number; right: number; bottom: number }): number =>
+        Math.max(0, Math.min(x + bw, r.right) - Math.max(x, r.left)) * Math.max(0, Math.min(y + bh, r.bottom) - Math.max(y, r.top));
+      sc += hit({ left: b.l, top: b.t, right: b.l + b.w, bottom: b.t + b.h }) * 2;
+      others.forEach((r) => { sc += hit(r); });
+      texts.forEach((r) => { sc += hit(r) * 0.3; });
+      centers.forEach((r) => { sc += hit(r) * 3; });
+      if (sc < bs) { bs = sc; best = [x, y]; if (sc === 0) break; }
+    }
+    return best;
   }
 
   function update(now: number): void {
     const id = st.id;
     if (!id) { hide(); return; }
+    /* «Míralo solo» (Paleta, Colores) enseña la pantalla por su cuenta: la guía espera */
+    if ($('#' + id)?.dataset.auto === '1') { hide(); return; }
     if (st.okUntil) {
       if (st.okUntil > now) {
         const bo = st.okEl && boxOf(st.okEl, st.okStep as Step);
@@ -166,7 +244,7 @@ export function startGuide(): GuideApi {
     const b = boxOf(el, step);
     if (!b) { hide(); return; }
     st.shown = idx;
-    place(b, step, true);
+    place(b, step, true, el);
   }
 
   function detect(now: number): void {

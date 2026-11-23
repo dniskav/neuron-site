@@ -1,0 +1,9 @@
+---
+/** La tira del examen: una muestra por color con su marca ✓/✗ (se maneja con `ExamChips`). */
+import { css } from '../../viz/core/colors';
+interface Props { id: string; colors: number[][] }
+const { id, colors } = Astro.props as Props;
+---
+<div class="exam" id={id} role="group" aria-label={`Los ${colors.length} colores del examen`}>
+  {colors.map((c, i) => <div class="ex" aria-label={`Color ${i + 1} del examen`}><i style={`background:${css(c)}`}></i><span></span></div>)}
+</div>

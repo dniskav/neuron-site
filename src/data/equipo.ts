@@ -19,6 +19,14 @@ export const CHUNK = 10;
 export const INIT_SEED = 3;
 export const TRAIN_SEED = 7;
 export const EXAM_SEED = 5;
+/**
+ * Con cuánto cambio acumulado se llena la sección de una neurona al 63 % (`fillOf`): la suma, paso a paso, de Σ|Δw| + |Δb|
+ * (`ObservedModel.travel`). Medido tras los 60 ejemplos y los 200 repasos: con 2 neuronas, 124 y 215 en las del medio y 98 en la
+ * que decide; con 3, de 123 a 204 y 131; la neurona sola (k = 1) acumula 203 y se queda en 67 %. Con 50, un equipo enseñado queda
+ * casi lleno (86–98 %). Mide cuánto se ha movido, no lo bien que acierta: la neurona sola se mueve mucho y no puede con lo del medio.
+ * Sin enseñarle, 0 (vacío).
+ */
+export const BRAIN_SCALE = 50;
 
 export const bri = (c: number[]): number => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
 /** 0 = oscuro, 1 = intermedio, 2 = claro. */

@@ -20,6 +20,7 @@ npm install @dniskav/neuron
 - Neurona: https://neuron.dniskav.com/#neurona
 - Enséñale: https://neuron.dniskav.com/#ensenale
 - Equipo: https://neuron.dniskav.com/#equipo
+- Paleta (¿Dónde caerá?): https://neuron.dniskav.com/#paleta
 - Snake: https://neuron.dniskav.com/#snake
 - Juegos: https://neuron.dniskav.com/#juegos
 - Historia: https://neuron.dniskav.com/#historia

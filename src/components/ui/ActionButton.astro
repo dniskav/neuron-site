@@ -1,0 +1,10 @@
+---
+/**
+ * Un botón de acción. `variant`: `go` (el principal, `qgo`), `step` (secundario, `qstep`), `ghost` (`e0`), `link` (`nlink`)
+ * o `auto` («Míralo solo», `nauto`). El texto es el slot; el resto de atributos pasan tal cual.
+ */
+interface Props { variant?: 'go' | 'step' | 'ghost' | 'link' | 'auto'; class?: string; [k: string]: unknown }
+const { variant = 'step', class: extra, ...rest } = Astro.props as Props;
+const cls = { go: 'qgo', step: 'qstep', ghost: 'e0', link: 'nlink', auto: 'nauto' }[variant];
+---
+<button type="button" class:list={[cls, extra]} {...rest}><slot /></button>

@@ -1,8 +1,8 @@
 /* Enséñale: laboratorio (conjuntos, neurona, frasco, paneles de código y cerebro, selector de color). */
 /* 2b enséñale */
-#ensenale,#equipo{justify-content:flex-start;padding-top:calc(var(--hdr) + 6px);padding-bottom:16px}
-#ensenale .ehead h2,#equipo .ehead h2{font-size:clamp(28px,4vw,46px);margin-top:6px}
-#ensenale .ehead .sub,#equipo .ehead .sub{max-width:none;margin-top:6px;font-size:clamp(14px,1.5vw,17px)}
+#ensenale,#equipo,#colores,#paleta{justify-content:flex-start;padding-top:calc(var(--hdr) + 6px);padding-bottom:16px}
+#ensenale .ehead h2,#equipo .ehead h2,#colores .ehead h2,#paleta .ehead h2{font-size:clamp(28px,4vw,46px);margin-top:6px}
+#ensenale .ehead .sub,#equipo .ehead .sub,#colores .ehead .sub,#paleta .ehead .sub{max-width:none;margin-top:6px;font-size:clamp(14px,1.5vw,17px)}
 .elab{flex:1;min-height:0;width:100%;max-width:1240px;display:grid;grid-template-columns:268px minmax(0,1fr) 276px;gap:28px;align-items:stretch;margin-top:12px;text-align:left}
 .elab>div{min-width:0;min-height:0}
 .esets,.emid,.eside{display:flex;flex-direction:column}
@@ -111,6 +111,9 @@
 .exlab{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);text-align:center;margin-top:8px}
 .flask{position:relative;flex:1;min-height:170px}
 .flask canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* el cerebro (sustituye al frasco): más pequeño, una sección por neurona */
+.meter{position:relative;flex:none;height:128px;margin:0 auto;width:100%;max-width:240px}
+.meter canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .ephrase{min-height:4.6em;margin-top:8px;font-size:15px;line-height:1.35;color:#d6d1c0;text-align:center}
 .ephrase small{display:block;margin-top:3px;font-family:var(--mono);font-size:11px;color:var(--mute)}
 .jars{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:6px}
@@ -132,7 +135,7 @@
   .ephrase{font-size:14px}.estatus{margin-top:2px}.jb{height:30px}
 }
 @media (max-width:899px){
-  #ensenale,#equipo{height:auto;min-height:100vh;min-height:100dvh;overflow:visible;scroll-snap-stop:normal;padding-bottom:40px}
+  #ensenale,#equipo,#colores,#paleta{height:auto;min-height:100vh;min-height:100dvh;overflow:visible;scroll-snap-stop:normal;padding-bottom:40px}
   .elab{display:flex;flex-direction:column;gap:20px;max-width:640px}
   .slist{grid-template-columns:repeat(2,minmax(0,1fr))}
   .set{grid-template-columns:44px 1fr;grid-template-rows:auto auto;padding:8px 10px}
@@ -141,6 +144,7 @@
   .enote{margin-top:10px}
   .ecv{flex:none;aspect-ratio:640/420;max-height:none}
   .flask{flex:none;height:270px}
+  .meter{height:112px}
   .exam{gap:2px;padding:6px}
 }
 

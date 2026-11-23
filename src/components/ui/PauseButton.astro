@@ -1,0 +1,6 @@
+---
+/** El botón de pausa (se maneja con `PauseControl`): ids {p}pause y {p}pi (el icono). Va en el slot `before` de `CodeBrainDock`. */
+interface Props { prefix: string }
+const { prefix: p } = Astro.props as Props;
+---
+<button class="cbtn pbtn" id={p + 'pause'} type="button" aria-label="Pausar el juego" title="Pausar (barra espaciadora)" aria-pressed="false"><span id={p + 'pi'} aria-hidden="true">❚❚</span></button>

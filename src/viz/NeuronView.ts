@@ -3,6 +3,7 @@ import { chan, css, lc, rgb, type Rgb } from './core/colors';
 import { reducedMotion } from './core/motion';
 import { Celebration } from './Celebration';
 import type { NeuronGeometry } from './geometry';
+import { LOD_DETAIL, type Lod } from './lod';
 import type { NeuronDelta, NeuronLike } from './observe';
 
 /**
@@ -97,6 +98,9 @@ export interface Answer {
   hold: number;
 }
 
+const clamp01 = (x: number): number => Math.max(0, Math.min(1, x));
+const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
+
 const DARK: Rgb = [22, 34, 78], LIGHT: Rgb = [255, 238, 176], NEUT: Rgb = [176, 168, 140];
 
 export class NeuronView {
@@ -129,6 +133,10 @@ export class NeuronView {
   lastStrength = 0;
   /** Última intensidad de pulso por dendrita (0..1) calculada con `pulseOf`. */
   scale = 1;
+  /** Nivel de detalle pedido y su valor mostrado (0 puntos, 1 compacto, 2 completo), que se acerca con suavidad. */
+  lod: Lod = 'full';
+  detail = 2;
+  private lodSet = false;
 
   constructor(readonly index: { layer: number; neuron: number }, geom: NeuronGeometry, opts: NeuronViewOptions = {}) {
     this.geom = geom;
@@ -164,6 +172,25 @@ export class NeuronView {
   }
 
   get bound(): boolean { return !!this.src; }
+
+  // ---------- nivel de detalle ----------
+
+  /** Pide un nivel de detalle. La primera vez salta; después la transición es suave (ver `update`). */
+  setLod(l: Lod): void {
+    this.lod = l;
+    if (!this.lodSet) { this.detail = LOD_DETAIL[l]; this.lodSet = true; }
+  }
+  /** Toma el detalle mostrado de otra neurona (red nueva que sustituye a otra: la transición continúa). */
+  adoptDetail(d: number): void { this.detail = d; this.lodSet = true; }
+  /** 0..1: cuánto hay de «completo» (decoraciones, etiquetas, bulbo). */
+  get full(): number { return clamp01(this.detail - 1); }
+  /** 0..1: cuánto hay de «más que un punto». */
+  get comp(): number { return clamp01(this.detail); }
+  /** Radio con el que se dibuja el cuerpo ahora (un punto, un cuerpo pequeño o el completo). */
+  bodyR(): number {
+    const dot = Math.max(1.7, 2.7 / this.scale), small = this.geom.body.r * 0.6;
+    return mix(dot, mix(Math.min(small, Math.max(dot, 5.5 / this.scale)), this.geom.body.r, this.full), this.comp);
+  }
 
   // ---------- comportamientos ----------
 
@@ -238,6 +265,8 @@ export class NeuronView {
       for (let i = 0; i < this.wD.length; i++) this.wD[i] += (this.wT[i] - this.wD[i]) * ke;
       this.bD += (this.bT - this.bD) * ke;
     }
+    const dt2 = LOD_DETAIL[this.lod];
+    this.detail = reduced ? dt2 : Math.abs(dt2 - this.detail) < 0.01 ? dt2 : this.detail + (dt2 - this.detail) * Math.min(1, dt * 6);
     if (this.level.a > 0) this.lvD += (this.level.z - this.lvD) * (reduced ? 1 : Math.min(1, dt * 5));
     else this.lvD = this.o.levelMin;
     this.shown += (Math.min(this.charge, 1) - this.shown) * Math.min(1, dt * 6);
@@ -258,9 +287,13 @@ export class NeuronView {
 
   // ---------- dibujo ----------
 
-  /** Origen de la muestra, ramitas, dendritas (grosor = |w|; cortado = resta), axón y terminal. */
-  drawWires(ctx: CanvasRenderingContext2D): void {
-    const g = this.geom, fs = (n: number) => this.fs(n);
+  /**
+   * Origen de la muestra, ramitas, dendritas (grosor = |w|; cortado = resta), axón y terminal.
+   * Dibuja SIEMPRE todas las conexiones, en cualquier nivel de detalle (más finas, con opacidad según |w|, nunca ocultas)
+   * y devuelve cuántas dibujó.
+   */
+  drawWires(ctx: CanvasRenderingContext2D): number {
+    const g = this.geom, fs = (n: number) => this.fs(n), F = this.full, C = this.comp, ga = ctx.globalAlpha;
     if (g.origin) {
       const SW = g.origin;
       ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 1.3; ctx.setLineDash([3, 4]);
@@ -271,42 +304,57 @@ export class NeuronView {
         ctx.fillStyle = css(this.sample, sa); ctx.beginPath(); ctx.arc(SW.x, SW.y, SW.r, 0, TAU); ctx.fill();
         ctx.strokeStyle = 'rgba(255,255,255,' + 0.55 * sa + ')'; ctx.lineWidth = 1.4; ctx.stroke();
       }
-      ctx.font = font(fs(10.5)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(141,137,125,.95)';
-      ctx.fillText(this.vocab.origin, SW.x, SW.y + SW.r + fs(10.5) * 0.9);
+      if (F > 0.02) {
+        ctx.globalAlpha = ga * F;
+        ctx.font = font(fs(10.5)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(141,137,125,.95)';
+        ctx.fillText(this.vocab.origin, SW.x, SW.y + SW.r + fs(10.5) * 0.9);
+        ctx.globalAlpha = ga;
+      }
     }
-    // ramitas (decoración de cada dendrita)
-    g.dendrites.forEach((d) => {
-      ctx.strokeStyle = 'rgba(201,162,39,.22)'; ctx.lineWidth = 1.2;
+    // ramitas (decoración de cada dendrita): solo en el nivel completo
+    if (F > 0.02) g.dendrites.forEach((d) => {
+      ctx.strokeStyle = 'rgba(201,162,39,' + 0.22 * F + ')'; ctx.lineWidth = 1.2;
       d.branches.forEach((b) => { ctx.beginPath(); ctx.moveTo(b.p[0], b.p[1]); ctx.quadraticCurveTo(b.c[0], b.c[1], b.e[0], b.e[1]); ctx.stroke(); });
     });
-    // las dendritas: grosor = |peso| real; trazo cortado = peso negativo («resta»)
+    // las dendritas: grosor = |peso| real; trazo cortado = peso negativo («resta»). Todas, siempre.
+    const floor = (1 - F) * 1.1 / this.scale;
+    let drawn = 0;
     g.dendrites.forEach((d, i) => {
-      const wv = this.wD ? this.wD[i] : null;
-      const wd = this.o.thick(wv), neg = wv !== null && wv < 0;
-      ctx.strokeStyle = chan(d.rgb, 0.07); line(ctx, d.pts, wd * 3, true, neg);
-      ctx.strokeStyle = 'rgba(214,176,52,.78)'; line(ctx, d.pts, wd, true, neg);
-      ctx.strokeStyle = chan(d.rgb, 0.34); line(ctx, d.pts, wd, true, neg);
-      if (d.tipGlow !== false) glow(ctx, d.tip[0], d.tip[1], 9, chan(d.rgb, 0.5), chan(d.rgb, 0));
-      if (d.name) {
+      const wv = this.wD ? this.wD[i] : null, neg = wv !== null && wv < 0;
+      const mag = wv === null ? 0.5 : Math.min(1, Math.abs(wv) / this.o.wMax);
+      const wd = Math.max(this.o.thick(wv) * mix(0.5, mix(0.7, 1, F), C), floor);
+      const al = mix(0.3 + 0.7 * Math.sqrt(mag), 1, F);
+      ctx.strokeStyle = chan(d.rgb, 0.07 * F); if (F > 0.02) line(ctx, d.pts, wd * 3, true, neg);
+      ctx.strokeStyle = 'rgba(214,176,52,' + 0.78 * al + ')'; line(ctx, d.pts, wd, true, neg);
+      ctx.strokeStyle = chan(d.rgb, 0.34 * al); line(ctx, d.pts, wd, true, neg);
+      if (neg && F < 1) { ctx.strokeStyle = 'rgba(140,180,255,' + 0.6 * (1 - F) + ')'; line(ctx, d.pts, wd, true, true); }
+      drawn++;
+      if (d.tipGlow !== false) glow(ctx, d.tip[0], d.tip[1], 9, chan(d.rgb, 0.5 * mix(0.5, 1, F)), chan(d.rgb, 0));
+      if (d.name && F > 0.02) {
+        ctx.globalAlpha = ga * F;
         const ty = d.labelBelow ? d.tip[1] + fs(12) * 1.5 : d.tip[1] - fs(12) * 1.3;
         ctx.font = font(fs(12)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillStyle = chan(d.rgb, 0.95); ctx.fillText(d.name, d.tip[0], ty);
         if (neg) { ctx.font = font(fs(10.5)); ctx.fillStyle = 'rgba(242,239,230,.7)'; ctx.fillText(this.vocab.neg, d.tip[0], ty + (d.labelBelow ? 1 : -1) * fs(10.5) * 1.2); }
+        ctx.globalAlpha = ga;
       }
     });
     // axón y terminal
     if (g.axon.length) {
-      const AX = g.axon, AN = AX.length, endP = AX[AN - 1], term = g.terminal;
-      ctx.strokeStyle = 'rgba(201,162,39,.08)'; line(ctx, AX, 14, false);
-      ctx.strokeStyle = 'rgba(190,155,40,.75)'; line(ctx, AX, 4, false);
-      ctx.strokeStyle = 'rgba(255,224,138,.12)'; ctx.lineWidth = 11;
-      [0.25, 0.5, 0.75].forEach((f) => {
-        const kk = Math.round(f * (AN - 1)), a = AX[Math.max(0, kk - 2)], b = AX[Math.min(AN - 1, kk + 2)];
-        ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
-      });
-      ctx.strokeStyle = 'rgba(190,155,40,.7)'; ctx.lineWidth = 2.4;
+      const AX = g.axon, AN = AX.length, endP = AX[AN - 1], term = g.terminal, thin = mix(0.4, 1, F);
+      if (F > 0.02) { ctx.strokeStyle = 'rgba(201,162,39,' + 0.08 * F + ')'; line(ctx, AX, 14, false); }
+      ctx.strokeStyle = 'rgba(190,155,40,' + mix(0.4, 0.75, F) + ')'; line(ctx, AX, Math.max(4 * thin, floor), false);
+      if (F > 0.02) {
+        ctx.strokeStyle = 'rgba(255,224,138,' + 0.12 * F + ')'; ctx.lineWidth = 11;
+        [0.25, 0.5, 0.75].forEach((f) => {
+          const kk = Math.round(f * (AN - 1)), a = AX[Math.max(0, kk - 2)], b = AX[Math.min(AN - 1, kk + 2)];
+          ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+        });
+      }
+      ctx.strokeStyle = 'rgba(190,155,40,' + mix(0.4, 0.7, F) + ')'; ctx.lineWidth = Math.max(2.4 * thin, floor);
       ctx.beginPath(); ctx.moveTo(endP[0], endP[1]); ctx.lineTo(term[0], term[1]); ctx.stroke();
     }
+    return drawn;
   }
 
   /** La muestra viaja por las dendritas (`u` de 0 a 1): tamaño y brillo según el valor de cada canal. */
@@ -338,7 +386,7 @@ export class NeuronView {
     const m = Math.min(1, u * 1.4), cc = lc(NEUT, lc(DARK, LIGHT, p), m), hc = lc([200, 190, 150], a ? [255, 226, 140] : [100, 150, 255], m);
     const pos = ptAt(this.geom.axon, u);
     glow(ctx, pos[0], pos[1], 26, rgb(hc, 0.8), rgb(hc, 0));
-    ctx.fillStyle = rgb(cc, 1); ctx.beginPath(); ctx.arc(pos[0], pos[1], 6.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = rgb(cc, 1); ctx.beginPath(); ctx.arc(pos[0], pos[1], 6.5 * mix(0.5, 1, this.full), 0, TAU); ctx.fill();
     ctx.strokeStyle = a ? 'rgba(255,255,255,.85)' : 'rgba(130,175,255,.95)'; ctx.lineWidth = 1.8; ctx.stroke();
   }
 
@@ -347,8 +395,11 @@ export class NeuronView {
    * cuanto más se encendió cada una (`values`, de 0 a 1).
    */
   drawRelay(ctx: CanvasRenderingContext2D, values: number[], u: number): void {
+    const sz = mix(0.45, 1, this.full);
     this.geom.dendrites.forEach((d, j) => {
-      const hh = values[j] ?? 0, pp = ptAt(d.pts, u * u * (3 - 2 * u)), rr = 3 + hh * 7;
+      /* lo que lleva cada conexión: lo que se encendió la neurona de origen, por el peso de ESTA conexión */
+      const w = this.wD ? this.wD[j] : null, carry = w === null ? 1 : 0.3 + 0.7 * Math.sqrt(Math.min(1, Math.abs(w) / this.o.wMax));
+      const hh = (values[j] ?? 0) * carry, pp = ptAt(d.travel ?? d.pts, u * u * (3 - 2 * u)), rr = (3 + hh * 7) * sz;
       glow(ctx, pp[0], pp[1], rr * 3, 'rgba(255,226,140,' + (0.15 + 0.6 * hh) + ')', 'rgba(255,200,80,0)');
       ctx.fillStyle = 'rgba(255,240,190,' + (0.25 + 0.75 * hh) + ')'; ctx.beginPath(); ctx.arc(pp[0], pp[1], rr, 0, TAU); ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,' + (0.2 + 0.5 * hh) + ')'; ctx.lineWidth = 1.2; ctx.stroke();
@@ -364,7 +415,7 @@ export class NeuronView {
     const g = this.geom, pulse = this.pulseOf(delta, opts.ref), bp: [Pt, number][] = [];
     const ax = opts.axon ?? [0, 0.4], de = opts.dendrites ?? [0.4, 1];
     if (u >= ax[0] && u < ax[1] && g.axon.length) bp.push([ptAt(g.axon, 1 - (u - ax[0]) / (ax[1] - ax[0])), pulse.axon]);
-    else if (u >= de[0] && u <= de[1]) g.dendrites.forEach((d, i) => bp.push([ptAt(d.pts, 1 - (u - de[0]) / (de[1] - de[0])), pulse.dendrites[i] || 0]));
+    else if (u >= de[0] && u <= de[1]) g.dendrites.forEach((d, i) => bp.push([ptAt(d.travel ?? d.pts, 1 - (u - de[0]) / (de[1] - de[0])), pulse.dendrites[i] || 0]));
     bp.forEach(([p, sv]) => {
       if (sv < 0.04) return;
       glow(ctx, p[0], p[1], 8 + 16 * sv, 'rgba(120,175,255,' + (0.2 + 0.65 * sv) + ')', 'rgba(106,167,255,0)');
@@ -374,8 +425,24 @@ export class NeuronView {
 
   /** Cuerpo: recipiente que se llena con lo que llega, con la línea del sesgo y el «pop» elástico al aprender. */
   drawBody(ctx: CanvasRenderingContext2D, t: number): void {
+    if (this.detail > 1.98) { this.drawBodyFull(ctx, t, 1); return; }
+    const F = this.full, ga = ctx.globalAlpha, S = this.geom.body, r = this.bodyR();
+    if (F < 1) {
+      /* compacto o punto: un disco que brilla con lo que le llega, sin recipiente ni detalles */
+      const lit = this.shown * 0.6 + this.flash * 0.4, R = r * this.celebration.pop();
+      ctx.globalAlpha = ga * (1 - F);
+      glow(ctx, S.x, S.y, R * (2.2 + lit * 3.2), 'rgba(255,205,90,' + (0.12 + lit * 0.6) + ')', 'rgba(201,162,39,0)');
+      ctx.fillStyle = 'rgb(' + ((70 + lit * 185) | 0) + ',' + ((52 + lit * 172) | 0) + ',' + ((14 + lit * 124) | 0) + ')';
+      ctx.beginPath(); ctx.arc(S.x, S.y, R, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,224,138,' + (0.4 + lit * 0.55) + ')'; ctx.lineWidth = Math.max(1, 1.2 / this.scale); ctx.stroke();
+      ctx.globalAlpha = ga;
+    }
+    if (F > 0.02) { ctx.globalAlpha = ga * F; this.drawBodyFull(ctx, t, r / S.r); ctx.globalAlpha = ga; }
+  }
+
+  private drawBodyFull(ctx: CanvasRenderingContext2D, t: number, rMul: number): void {
     const S = this.geom.body, lit = this.shown * 0.6 + this.flash * 0.4;
-    const BR = S.r * this.celebration.pop();
+    const BR = S.r * rMul * this.celebration.pop(), ga0 = ctx.globalAlpha;
     glow(ctx, S.x, S.y, BR * (2 + lit * 2.2), 'rgba(255,205,90,' + (0.1 + lit * 0.5) + ')', 'rgba(201,162,39,0)');
     if (this.flash > 0.3) glow(ctx, S.x, S.y, BR * 4, 'rgba(180,215,255,' + this.flash * 0.3 + ')', 'rgba(106,167,255,0)');
     const bodyPath = (): void => {
@@ -417,10 +484,10 @@ export class NeuronView {
         const lg = ctx.createLinearGradient(0, yz, 0, S.y + BR);
         if (above) { lg.addColorStop(0, 'rgba(255,240,170,.95)'); lg.addColorStop(1, 'rgba(255,190,70,.85)'); }
         else { lg.addColorStop(0, 'rgba(165,200,255,.92)'); lg.addColorStop(1, 'rgba(60,100,215,.85)'); }
-        ctx.globalAlpha = la; ctx.fillStyle = lg; ctx.fill();
+        ctx.globalAlpha = ga0 * la; ctx.fillStyle = lg; ctx.fill();
         ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.4; ctx.beginPath();
         for (x = S.x - BR - 4; x <= S.x + BR + 4; x += 4) { const yy = yz + Math.sin(x * 0.13 + t * 3) * 2.2; if (x > S.x - BR - 4) ctx.lineTo(x, yy); else ctx.moveTo(x, yy); }
-        ctx.stroke(); ctx.globalAlpha = 1;
+        ctx.stroke(); ctx.globalAlpha = ga0;
       }
       ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 1.6; ctx.shadowColor = '#c9a227'; ctx.shadowBlur = 8; ctx.beginPath();
       for (x = S.x - BR - 4; x <= S.x + BR + 4; x += 4) { const yl2 = lineY + Math.sin(x * 0.2 + t * 1.5) * 1.6; if (x > S.x - BR - 4) ctx.lineTo(x, yl2); else ctx.moveTo(x, yl2); }
@@ -439,12 +506,13 @@ export class NeuronView {
 
   /** Ondas, celebración, etiqueta de la línea y bulbo de salida. */
   drawFront(ctx: CanvasRenderingContext2D): void {
-    const S = this.geom.body, fs = (n: number) => this.fs(n);
+    const S = this.geom.body, fs = (n: number) => this.fs(n), F = this.full, ga = ctx.globalAlpha;
     for (const rp of this.ripples) {
       ctx.strokeStyle = (rp.c ? 'rgba(120,175,255,' : 'rgba(160,200,255,') + (1 - rp.t) * 0.7 + ')'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(rp.x, rp.y, 6 + rp.t * 34, 0, TAU); ctx.stroke();
     }
-    this.celebration.draw(ctx, S.x, S.y, S.r, fs);
+    this.celebration.draw(ctx, S.x, S.y, this.bodyR(), fs);
+    ctx.globalAlpha = ga * F;
     // etiqueta de la línea
     if (this.wD && this.o.lineLabel) {
       const lf = Math.min(13, fs(10.5)), lx = S.x + S.r + this.o.labelGap, lineY = this.lineY;
@@ -457,7 +525,8 @@ export class NeuronView {
       ctx.fillText(this.vocab.threshold, lx, ly);
       if (this.level.a > 0 && this.lvD > this.o.levelMax) { ctx.textAlign = 'center'; ctx.fillText('▲', S.x, S.y - S.r - 6); }
     }
-    if (this.o.bulb) this.drawBulb(ctx);
+    if (this.o.bulb && F > 0.02) this.drawBulb(ctx);
+    ctx.globalAlpha = ga;
     ctx.textAlign = 'left';
   }
 

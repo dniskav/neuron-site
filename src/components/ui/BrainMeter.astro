@@ -1,0 +1,6 @@
+---
+/** El lienzo del cerebro (se monta con `mountBrainMeter`). Con `bare`, solo el lienzo (sin el envoltorio `.meter`) y con `class` propia. */
+interface Props { id: string; label: string; bare?: boolean; class?: string }
+const { id, label, bare = false, class: cls } = Astro.props as Props;
+---
+{bare ? <canvas class={cls} id={id} role="img" aria-label={label}></canvas> : <div class="meter"><canvas id={id} role="img" aria-label={label}></canvas></div>}
