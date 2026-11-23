@@ -392,3 +392,9 @@ export function playDrops(net: NetworkN, kind: Kind, rules: boolean | Rules, sav
 
 /** Cuántos números aprende cada modelo. */
 export const paramCount = (kind: Kind): number => (kind === 'solo' ? IN_N + 1 : (IN_N + 1) * HIDDEN + HIDDEN + 1);
+
+/**
+ * «Ya no mejora» en las bolas (ver `plateau`, `viz/learningCurve.ts`; cada bola vale 1 si la paleta la atrapó y 0 si no): las últimas 40 frente
+ * a las 40 de antes, no antes de 100 bolas. Con 1/0 el ruido es grande (desviación ~0,5), así que la mejora tiene que pasar de 0,04 y de 0,3 veces ese ruido.
+ */
+export const PLATEAU = { window: 40, minGames: 100, skip: 0, minGain: 0.04, k: 0.3, better: 'up' } as const;

@@ -10,6 +10,7 @@ import CodeBrainDock from '../ui/CodeBrainDock.astro';
 import ColorPicker from '../ui/ColorPicker.astro';
 import ExamStrip from '../ui/ExamStrip.astro';
 import Jars from '../ui/Jars.astro';
+import LearningCurve from '../ui/LearningCurve.astro';
 
 const cmp = computeCmp();
 const phrase = comparePhrase(cmp);
@@ -75,6 +76,8 @@ const bars = [['255,96,84', 'rojo'], ['96,214,112', 'verde'], ['104,152,255', 'a
     <div class="eside rv" style="--d:5">
       <BrainMeter id="emeter" label="Cerebro de una neurona, vacío: todavía no ha aprendido nada" />
       <p class="ephrase" id="ephrase"></p>
+      <LearningCurve id="ecurve" class="ecurve" label="Curva de aprendizaje: cuánto se equivoca en los ejemplos, repaso a repaso" />
+      <p class="ecap" id="ecap" aria-live="off"></p>
       <p class="jarlab">Comparar · ejemplos y aciertos</p>
       <Jars id="jars" keys={jarKeys} titles={jarTitles} />
     </div>

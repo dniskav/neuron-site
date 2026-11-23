@@ -3,12 +3,12 @@ import '../../styles/lab.css';
 import '../../styles/equipo.css';
 import '../../styles/paleta.css';
 import { newPaletaCodeState, renderCodeHtml } from '../../data/paletaCode';
-import { WINDOW } from '../../data/paletaAuto';
 import ActionButton from '../ui/ActionButton.astro';
 import ActionRow from '../ui/ActionRow.astro';
 import AutoPanel from '../ui/AutoPanel.astro';
 import BrainMeter from '../ui/BrainMeter.astro';
 import CodeBrainDock from '../ui/CodeBrainDock.astro';
+import LearningCurve from '../ui/LearningCurve.astro';
 import PauseButton from '../ui/PauseButton.astro';
 import Toggle from '../ui/Toggle.astro';
 
@@ -54,7 +54,7 @@ const codeHtml = renderCodeHtml(newPaletaCodeState());
         <BrainMeter bare class="pmeter" id="pameter" label="Cerebro de una neurona, vacío: todavía no ha aprendido nada" />
         <div class="pstripcol">
           <p class="pcount" id="pacount" aria-live="polite">Ninguna bola todavía</p>
-          <div class="pstrip" id="pastrip" role="img" aria-label={`Las últimas ${WINDOW} bolas: atrapada o no`}></div>
+          <LearningCurve id="pastrip" class="pcurve" label="Curva de aprendizaje: bolas atrapadas, desde que se creó esta red" />
           <p class="pnote" id="panotebrain" hidden></p>
         </div>
       </div>

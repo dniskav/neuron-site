@@ -10,12 +10,14 @@
  * hacia atrás; ahí se llama a train y se leen los pesos reales).
  */
 import type { NeuronN } from '@dniskav/neuron';
-import { ALL, BRAIN_SCALE, EPOCHS, EXAM, FULLN, LR, SIZES, labelOf, newNeuron } from '../../data/ensenale';
+import { ALL, BRAIN_SCALE, EPOCHS, EXAM, FULLN, LR, PLATEAU, SIZES, labelOf, newNeuron, passError } from '../../data/ensenale';
 import { computeCmp } from '../../data/ensenaleCompare';
 import { hexRgb } from '../../viz/core/colors';
 import { createLoop } from '../../viz/core/loop';
 import { reducedMotion } from '../../viz/core/motion';
 import { BrainMeter } from '../../viz/BrainMeter';
+import { CurveHistory, plateau } from '../../viz/learningCurve';
+import { FLAT_MESSAGE, mountLearningCurve } from '../ui/LearningCurve';
 import { threeInputGeometry } from '../../viz/geometry';
 import { NetworkView } from '../../viz/NetworkView';
 import { NeuronView } from '../../viz/NeuronView';
@@ -65,6 +67,13 @@ export function startEnsenale(): void {
   const idle = new NeuronView({ layer: 0, neuron: 0 }, threeInputGeometry());
   let view = idle;
   const meter = new BrainMeter(1);
+  /* la curva: cuánto se equivoca la neurona en los ejemplos que ve, tras cada repaso (de `predict`, no de mentira) */
+  const curve = new CurveHistory(), capEl = $('ecap');
+  const flatNow = (): boolean => !!plateau(curve.recent, 0, PLATEAU)?.flat;
+  const capText = (): string => (flatNow() ? FLAT_MESSAGE + ' Sigue ajustándose, pero el error ya no baja.' : curve.total ? 'Cuánto se equivoca en los ' + st.set.length + ' ejemplos, repaso a repaso: ' + num2(curve.recent[curve.recent.length - 1]) : '');
+  const num2 = (x: number): string => x.toFixed(3).replace('.', ',');
+  const paintCurve = (): void => { capEl.textContent = capText(); curveLoop.redraw(); };
+  const passDone = (): void => { curve.add(passError(st.net as NeuronN, st.set)); paintCurve(); };
   const T = { s: 1, ox: 0, oy: 0 };
 
   // ---------- paneles ----------
@@ -106,9 +115,9 @@ export function startEnsenale(): void {
 
   function start(k: number): void {
     st = { phase: 'idle', k, net: null, set: ALL.slice(0, k), idx: 0, sp: 0, seen: 0, pass: 1, rt: 0, eidx: 0, et: 0, done: 0, correct: 0 };
-    items = [];
+    items = []; curve.reset();
     const net = newNeuron();
-    bindNet(net);
+    bindNet(net); paintCurve();
     code.reset({ k, w0: net.weights.slice() });
     chips.reset();
     pctShown = null; nar.phrase();
@@ -142,7 +151,8 @@ export function startEnsenale(): void {
   }
   function instant(): void {
     const net = st.net as NeuronN;
-    for (let i = 0; i < EPOCHS && st.k; i++) trainPass();
+    for (let i = 0; i < EPOCHS && st.k; i++) { trainPass(); curve.add(passError(net, st.set)); }
+    paintCurve();
     view.sync(true); observed().observed.resync();
     st.correct = 0;
     EXAM.forEach((c, n) => { const a = net.predict(c) > 0.5 ? 1 : 0, ok = a === labelOf(c); if (ok) st.correct++; chips.mark(n, ok); });
@@ -226,11 +236,11 @@ export function startEnsenale(): void {
       if (st.idx < (st.k as number) && st.sp <= 0 && (st.idx < FULLN ? !items.length : items.every((it) => it.d !== FULL || it.stage === 'back'))) {
         launch('train', st.set[st.idx], st.idx, st.idx < FULLN ? FULL : FAST); st.idx++; st.sp = st.idx < FULLN ? 0 : 0.17;
       }
-      if (st.idx >= (st.k as number) && !items.length) { st.phase = 'review'; st.pass = 1; st.rt = 0.5; }
+      if (st.idx >= (st.k as number) && !items.length) { st.phase = 'review'; st.pass = 1; st.rt = 0.5; passDone(); }
     } else if (st.phase === 'review') {
       st.rt -= dt;
       if (st.rt <= 0) {
-        st.pass++; trainPass(); view.flash = Math.max(view.flash, 0.5);
+        st.pass++; trainPass(); passDone(); view.flash = Math.max(view.flash, 0.5);
         const delta = observed().observed.poll()[0][0];
         items.push({ kind: 'rev', c: [], i: 0, stage: 'back', t: 0, d: { back: 0.3 }, delta, p: 0, a: 0, ok: false, z: 0, dead: false });
         setStatus('repasando… ' + st.pass + '/' + EPOCHS);
@@ -273,6 +283,13 @@ export function startEnsenale(): void {
   const meterLoop = mountBrainMeter({
     canvas: fcv, meter, reduced, caption: { el: $('emetercap'), text: () => pctCaption(pctShown) },
     aria: () => brainAria(meter, st.phase === 'done' ? Math.round((st.correct / 12) * 100) : null, 'de aciertos en el examen'),
+  });
+
+  const curveLoop = mountLearningCurve($('ecurve'), {
+    history: () => curve, plateau: () => plateau(curve.recent, 0, PLATEAU), window: 3, minX: EPOCHS, empty: 'aquí se verá cómo se equivoca menos',
+    yLabel: () => 'error ' + num2(Math.max(0.01, ...curve.recent)),
+    yMax: () => Math.max(0.01, ...curve.recent) * 1.08,
+    aria: () => 'Curva de aprendizaje: cuánto se equivoca en los ejemplos, repaso a repaso (' + curve.total + ' repasos)' + (flatNow() ? '. ' + FLAT_MESSAGE : '') + '.',
   });
 
   // ---------- controles ----------

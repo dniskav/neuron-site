@@ -72,11 +72,11 @@ describe('ObservedModel.restore', () => {
 });
 
 describe('Snake: el nivel (lo que ve) se guarda', () => {
-  it('versión 2 y el nivel va en el archivo: «ojos» o «ayuda»', () => {
-    expect(SNAKE_VERSION).toBe(2);
+  it('versión 3 y el nivel va en el archivo: «ojos» o «ayuda»', () => {
+    expect(SNAKE_VERSION).toBe(3);
     for (const v of ['ojos', 'ayuda'] as Vision[]) {
       const a = played(8, 3, v), j = JSON.parse(snakeText(a.s, 5, a.counters()));
-      expect(j.version).toBe(2); expect(j.state.vision).toBe(v);
+      expect(j.version).toBe(3); expect(j.state.vision).toBe(v);
       expect(j.state.net.structure).toEqual(v === 'ayuda' ? [10, 3] : [7, 3]);
       expect(j.state.net.weights).toHaveLength(v === 'ayuda' ? 33 : 24);
     }
@@ -96,7 +96,7 @@ describe('Snake: el nivel (lo que ve) se guarda', () => {
   });
   it('lo guardado con la versión 1 (solo el nivel 1, sin «vision» ni «trapped») se carga como «sus ojos»', () => {
     const a = played(15), j = JSON.parse(snakeText(a.s, 4, a.counters()));
-    j.version = 1; delete j.state.vision; j.state.results.forEach((x: { trapped?: boolean }) => { delete x.trapped; });
+    j.version = 1; delete j.state.curve; delete j.state.vision; j.state.results.forEach((x: { trapped?: boolean }) => { delete x.trapped; });
     const r = loadSnake(JSON.stringify(j));
     expect(r.ok).toBe(true); if (!r.ok) return;
     expect(r.session.vision).toBe('ojos'); expect(r.session.net.structure).toEqual([7, 3]);
@@ -106,6 +106,16 @@ describe('Snake: el nivel (lo que ve) se guarda', () => {
     // un archivo viejo que dijera «ayuda» no vale: la versión 1 no tenía ese campo
     j.state.vision = 'ayuda';
     const r2 = loadSnake(JSON.stringify(j)); expect(r2.ok).toBe(true); if (r2.ok) expect(r2.session.vision).toBe('ojos');
+  });
+  it('lo guardado con la versión 2 (sin curva) se carga: su curva arranca de las últimas 60 partidas que sí guardaba', () => {
+    const a = played(90, 4, 'ayuda'), j = JSON.parse(snakeText(a.s, 4, a.counters()));
+    j.version = 2; delete j.state.curve;
+    const r = loadSnake(JSON.stringify(j));
+    expect(r.ok).toBe(true); if (!r.ok) return;
+    expect(r.session.games).toBe(90); expect(r.session.vision).toBe('ayuda');
+    expect(r.session.curve.total).toBe(RESULTS_KEEP);
+    expect(r.session.curve.recent).toEqual(a.s.results.slice(-RESULTS_KEEP).map((x) => x.food));
+    r.session.playGames(2); expect(r.session.curve.total).toBe(RESULTS_KEEP + 2); expect(r.session.games).toBe(92);
   });
   it('rechaza un nivel desconocido, o pesos que no son de ese nivel (nada a medias)', () => {
     const ayuda = (): any => { const a = played(6, 3, 'ayuda'); return JSON.parse(snakeText(a.s, 2, a.counters())); };
@@ -118,7 +128,33 @@ describe('Snake: el nivel (lo que ve) se guarda', () => {
       ['«trapped» que no es sí/no', (() => { const j = ayuda(); j.state.results[0].trapped = 'sí'; return j; })()],
     ];
     for (const [name, j] of cases) { const r = loadSnake(JSON.stringify(j)); expect(r.ok, name).toBe(false); if (!r.ok) expect(r.reason.length, name).toBeGreaterThan(5); }
-    expect(loadSnake(JSON.stringify({ ...ayuda(), version: 3 })).ok).toBe(false);
+    expect(loadSnake(JSON.stringify({ ...ayuda(), version: 4 })).ok).toBe(false);
+  });
+});
+
+describe('Snake: la curva de aprendizaje en el archivo', () => {
+  it('ida y vuelta: el historial entero (cubos incluidos) vuelve igual, y sigue sumando', () => {
+    const a = played(700, 9), j = JSON.parse(snakeText(a.s, 5, a.counters()));
+    expect(j.state.curve.total).toBe(700); expect(j.state.curve.old.length).toBe(5); // 700 partidas: quedan sueltas 600 (se pliega de 20 en 20 al llegar a 620), 100 plegadas
+    const r = loadSnake(JSON.stringify(j));
+    expect(r.ok).toBe(true); if (!r.ok) return;
+    expect(r.session.curve.toJSON()).toEqual(a.s.curve.toJSON());
+    expect(r.session.curve.mean).toBeCloseTo(a.s.results.reduce((s, x) => s + x.food, 0) / 700, 9);
+    r.session.playGames(5); expect(r.session.curve.total).toBe(705);
+  });
+  it('rechaza una curva que no cuenta las mismas partidas o con números raros (nada a medias)', () => {
+    const base = (): any => { const a = played(30, 2); return JSON.parse(snakeText(a.s, 1, a.counters())); };
+    const cases: [string, (j: any) => void][] = [
+      ['sin curva', (j) => { delete j.state.curve; }],
+      ['otro total', (j) => { j.state.curve.total = 31; }],
+      ['un valor que no es número', (j) => { j.state.curve.recent[3] = 'x'; }],
+      ['un cubo roto', (j) => { j.state.curve.old = [[0, 1, 2, 3]]; j.state.curve.total = 30; j.state.curve.recent = j.state.curve.recent.slice(0, 30); }],
+    ];
+    for (const [name, f] of cases) { const j = base(); f(j); expect(loadSnake(JSON.stringify(j)).ok, name).toBe(false); }
+  });
+  it('tamaño tras 500 partidas (en una línea, como el almacén del navegador): la curva ocupa poco', () => {
+    const a = played(500, 6), line = snakeText(a.s, 5, a.counters(), false), curve = JSON.stringify(a.s.curve.toJSON());
+    expect(curve.length).toBeLessThan(2500); expect(line.length).toBeLessThan(12000);
   });
 });
 

@@ -5,11 +5,11 @@ import '../../styles/paleta.css';
 import '../../styles/snake.css';
 import { newSnakeCodeState, renderCodeHtml } from '../../data/snakeCode';
 import { LEVELS, MAX_IDLE, SIZE } from '../../data/snake';
-import { WINDOW } from '../../data/snakeAuto';
 import ActionButton from '../ui/ActionButton.astro';
 import ActionRow from '../ui/ActionRow.astro';
 import AutoPanel from '../ui/AutoPanel.astro';
 import BrainMeter from '../ui/BrainMeter.astro';
+import LearningCurve from '../ui/LearningCurve.astro';
 import CodeBrainDock from '../ui/CodeBrainDock.astro';
 import PauseButton from '../ui/PauseButton.astro';
 import SavedModel from '../ui/SavedModel.astro';
@@ -51,7 +51,7 @@ const codeHtml = renderCodeHtml(newSnakeCodeState());
         <BrainMeter bare class="pmeter" id="snmeter" label="Cerebro de 3 neuronas, vacío: todavía no ha aprendido nada" />
         <div class="pstripcol snstat">
           <p class="pcount" id="sncount" aria-live="polite">aún sin partidas</p>
-          <canvas id="sncurve" class="sncurve" role="img" aria-label={`Comidas de cada una de las últimas ${WINDOW * 3} partidas`}></canvas>
+          <LearningCurve id="sncurve" class="sncurve" label="Curva de aprendizaje: comidas por partida, desde que se creó esta red" />
         </div>
       </div>
     </div>

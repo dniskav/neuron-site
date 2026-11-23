@@ -13,6 +13,7 @@ import ColorDots from '../ui/ColorDots.astro';
 import ColorPicker from '../ui/ColorPicker.astro';
 import ExamStrip from '../ui/ExamStrip.astro';
 import Jars from '../ui/Jars.astro';
+import LearningCurve from '../ui/LearningCurve.astro';
 
 const cmp = computeTeamCmp();
 const codeHtml = renderCodeHtml(newTeamCodeState());
@@ -66,6 +67,8 @@ const jarTitles = Object.fromEntries(KS.map((k) => [k, kName(k)]));
     <div class="eside rv" style="--d:5">
       <BrainMeter id="qmeter" label="Cerebro con una sección por neurona, vacío: todavía no han aprendido nada" />
       <p class="ephrase" id="qphrase"></p>
+      <LearningCurve id="qcurve" class="ecurve" label="Curva de aprendizaje: cuánto se equivoca en los 60 colores, repaso a repaso" />
+      <p class="ecap" id="qcap" aria-live="off"></p>
       <p class="jarlab">Comparar · neuronas y aciertos</p>
       <Jars id="qjars" keys={KS} titles={jarTitles} />
     </div>

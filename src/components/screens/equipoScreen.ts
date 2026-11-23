@@ -13,7 +13,7 @@
 import type { NetworkN } from '@dniskav/neuron';
 import {
   BRAIN_SCALE, CHUNK, EPOCHS, EXAM, FULLN, KS, LR, NTRAIN, TAGFULL, TAGSHORT, TRAIN,
-  kName, labelOf, newTeam, specTags, trainPass, type SpecTag,
+  PLATEAU, kName, labelOf, newTeam, passError, specTags, trainPass, type SpecTag,
 } from '../../data/equipo';
 import { newTeamCodeState, rawText, renderCodeHtml, type TeamCodeState } from '../../data/equipoCode';
 import { font, rrect } from '../../viz/core/canvas';
@@ -21,6 +21,8 @@ import { hexRgb } from '../../viz/core/colors';
 import { createLoop } from '../../viz/core/loop';
 import { reducedMotion } from '../../viz/core/motion';
 import { BrainMeter } from '../../viz/BrainMeter';
+import { CurveHistory, plateau } from '../../viz/learningCurve';
+import { FLAT_MESSAGE, mountLearningCurve } from '../ui/LearningCurve';
 import { TEAM_HUE, teamLayout } from '../../viz/geometry';
 import { NetworkView } from '../../viz/NetworkView';
 import type { NeuronViewOptions } from '../../viz/NeuronView';
@@ -89,6 +91,12 @@ export function startEquipo(): void {
   let nv: NetworkView = new NetworkView(st.net, viewOptions(1), teamLayout(1));
   let items: Item[] = [], pctShown: number | null = null, tagT = 0;
   const meter = new BrainMeter(1);
+  /* la curva: cuánto se equivoca el equipo en los 60 colores que ve, tras cada repaso (de `predict`, no de mentira) */
+  const curve = new CurveHistory(), capEl = $('qcap');
+  const flatNow = (): boolean => !!plateau(curve.recent, 0, PLATEAU)?.flat;
+  const num3 = (x: number): string => x.toFixed(3).replace('.', ',');
+  const capText = (): string => (flatNow() ? FLAT_MESSAGE + ' Sigue ajustándose, pero el error ya no baja.' + (K === 1 ? ' Prueba con más neuronas.' : '') : curve.total ? 'Cuánto se equivoca en los ' + NTRAIN + ' colores, repaso a repaso: ' + num3(curve.recent[curve.recent.length - 1]) : '');
+  const paintCurve = (): void => { capEl.textContent = capText(); curveLoop.redraw(); };
   meter.setModel(st.net); meter.track(nv.observed, BRAIN_SCALE);
 
   // ---------- paneles ----------
@@ -119,7 +127,7 @@ export function startEquipo(): void {
     nv = new NetworkView(net, viewOptions(k), teamLayout(k));
     meter.setModel(net); meter.track(nv.observed, BRAIN_SCALE);
     st = { phase: 'idle', k, net, trained: false, idx: 0, sp: 0, seen: 0, pass: 0, rt: 0, eidx: 0, et: 0, done: 0, correct: 0, yes: 0, tags: null };
-    items = []; pctShown = null; tagT = 0;
+    items = []; pctShown = null; tagT = 0; curve.reset(); paintCurve();
     nar.phrase(); resetMarks(); setUI();
     code.reset({ k, trained: false });
     setLeg('exam');
@@ -190,7 +198,7 @@ export function startEquipo(): void {
     say('Acertó ' + st.correct + ' de 12, un ' + pct + ' por ciento. ' + p.m + ' ' + (tags.length ? p.extra : ''));
   }
   function instant(): void {
-    if (st.trained) for (let i = 0; i < EPOCHS; i++) trainPass(st.net);
+    if (st.trained) { for (let i = 0; i < EPOCHS; i++) { trainPass(st.net); curve.add(passError(st.net)); } paintCurve(); }
     nv.neurons.forEach((v) => v.sync(true)); nv.observed.resync();
     st.correct = 0; st.yes = 0;
     EXAM.forEach((c, n) => { const a = st.net.predict(c)[0] > 0.5 ? 1 : 0, ok = a === labelOf(c); st.yes += a; if (ok) st.correct++; chips.mark(n, ok); });
@@ -290,15 +298,15 @@ export function startEquipo(): void {
       if (st.idx < FULLN && st.sp <= 0 && !items.length) { launch('train', TRAIN[st.idx], st.idx, FULL); st.idx++; st.sp = 0; }
       if (st.idx >= FULLN && !items.length) {
         for (let i = FULLN; i < NTRAIN; i++) { st.net.train(TRAIN[i], [labelOf(TRAIN[i])], LR); dots.seen(i); }
-        st.seen = NTRAIN; st.pass = 1; st.rt = 0.3; st.phase = 'review'; pulse();
+        st.seen = NTRAIN; st.pass = 1; st.rt = 0.3; st.phase = 'review'; pulse(); curve.add(passError(st.net)); paintCurve();
         setStatus('repasando… 1/' + EPOCHS);
       }
     } else if (st.phase === 'review') {
       st.rt -= dt;
       if (st.rt <= 0) {
         const n = Math.min(CHUNK, EPOCHS - st.pass);
-        for (let e = 0; e < n; e++) trainPass(st.net);
-        st.pass += n; pulse();
+        for (let e = 0; e < n; e++) { trainPass(st.net); curve.add(passError(st.net)); }
+        st.pass += n; pulse(); paintCurve();
         setStatus('repasando… ' + st.pass + '/' + EPOCHS);
         st.rt = 0.13;
         if (st.pass >= EPOCHS) st.phase = 'settle';
@@ -373,6 +381,13 @@ export function startEquipo(): void {
   const meterLoop = mountBrainMeter({
     canvas: fcv, meter, reduced, caption: { el: $('qmetercap'), text: () => pctCaption(pctShown) },
     aria: () => brainAria(meter, st.phase === 'done' ? Math.round((st.correct / 12) * 100) : null, 'de aciertos en el examen'),
+  });
+
+  const curveLoop = mountLearningCurve($('qcurve'), {
+    history: () => curve, plateau: () => plateau(curve.recent, 0, PLATEAU), window: 5, minX: EPOCHS, empty: 'aquí se verá cómo se equivoca menos',
+    yLabel: () => 'error ' + num3(Math.max(0.01, ...curve.recent)),
+    yMax: () => Math.max(0.01, ...curve.recent) * 1.08,
+    aria: () => 'Curva de aprendizaje: cuánto se equivoca en los ' + NTRAIN + ' colores, repaso a repaso (' + curve.total + ' repasos)' + (flatNow() ? '. ' + FLAT_MESSAGE : '') + '.',
   });
 
   // ---------- controles ----------

@@ -93,3 +93,13 @@ export function runSet(k: number): { w: number[]; b: number; pct: number; correc
   EXAM.forEach((c) => { if ((n.predict(c) > 0.5 ? 1 : 0) === labelOf(c)) ok++; });
   return { w: n.weights.slice(), b: n.bias, pct: Math.round((ok / 12) * 100), correct: ok };
 }
+
+/**
+ * Cuánto se equivoca la neurona en los ejemplos con los que aprende: error cuadrático medio (el de verdad: sale de `predict`) frente a la
+ * respuesta correcta (1 claro, 0 oscuro), después de cada repaso. 0 = acierta todo con total seguridad.
+ */
+export function passError(n: NeuronN, set: number[][]): number {
+  return set.reduce((s, c) => s + (n.predict(c) - labelOf(c)) ** 2, 0) / set.length;
+}
+/** «Ya no mejora» en los repasos (ver `plateau`, `viz/learningCurve.ts`): 5 repasos frente a los 5 de antes, desde el 15. Medido: con 2 ejemplos se aplana; con 13 o 34 sigue bajando a los 40 repasos (0,07 → 0,045). */
+export const PLATEAU = { window: 5, minGames: 15, skip: 0, minGain: 0.002, k: 0.4, better: 'down' } as const;

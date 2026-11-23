@@ -8,6 +8,7 @@
  * los mismos pesos predice igual, y Adam las rehace en unos pasos.
  */
 import { ModelSaver, type NetworkN } from '@dniskav/neuron';
+import { checkCurve, type CurveData } from '../viz/learningCurve';
 import { SAVE_APP, decode, encode, stringify, type Decoded, type Envelope } from '../viz/savedModel';
 import { OUT_N, SIZE, Session, newNet, type Death, type GameResult, type Vision } from './snake';
 
@@ -15,9 +16,11 @@ export const SNAKE_KIND = 'snake';
 /**
  * Sube si cambia lo que se guarda: lo desconocido se rechaza (y se dice) en vez de adivinarse.
  * 2: añade `vision` («ojos» o «ayuda», el nivel 2) y `trapped` en cada partida. La 1 sigue leyéndose: es siempre «sus ojos».
+ * 3: añade `curve`, el historial acotado de comidas de TODAS las partidas (la curva de aprendizaje). La 1 y la 2 siguen leyéndose: su curva
+ *    arranca de las últimas 60 partidas que sí guardaban (y su eje cuenta desde ahí).
  */
-export const SNAKE_VERSION = 2;
-export const SNAKE_OLDER = [1] as const;
+export const SNAKE_VERSION = 3;
+export const SNAKE_OLDER = [1, 2] as const;
 export const VISIONS: Vision[] = ['ojos', 'ayuda'];
 /** Partidas recientes que se guardan (las que dibuja la curva). */
 export const RESULTS_KEEP = 60;
@@ -33,6 +36,8 @@ export interface SnakeSave {
   steps: number;
   best: number;
   results: GameResult[];
+  /** Historial de comidas de todas las partidas (acotado: sueltas las últimas 600, y lo anterior en cubos con su mín., suma y máx.). Sin él (versión < 3): `null`. */
+  curve: CurveData | null;
   /** `ModelSaver.toJSON` de la red y de su copia congelada. */
   net: Weights;
   target: Weights;
@@ -50,6 +55,7 @@ export function toSave(session: Session, seed: number, brain: Counters): SnakeSa
   return {
     vision: session.vision, seed, games: session.games, steps: session.steps, best: session.best,
     results: session.results.slice(-RESULTS_KEEP).map((r) => ({ food: r.food, steps: r.steps, death: r.death, explored: r.explored, ...(r.trapped === undefined ? {} : { trapped: r.trapped }) })),
+    curve: session.curve.toJSON(),
     net: JSON.parse(ModelSaver.toJSON(session.net)), target: JSON.parse(ModelSaver.toJSON(session.target)),
     brain: { steps: brain.steps, travel: brain.travel.map((l) => l.slice()) },
   };
@@ -62,6 +68,12 @@ export function checkSave(x: unknown, version: number = SNAKE_VERSION): SnakeSav
   const vision = version < 2 ? 'ojos' : x.vision;
   if (!VISIONS.includes(vision as Vision)) bad('lo que ve la red');
   const { seed, games, steps, best, results, net, target, brain } = x;
+  /* la curva: obligatoria desde la versión 3 (y con tantos intentos como partidas); antes no existía */
+  let curve: CurveData | null = null;
+  if (version >= 3) {
+    try { curve = checkCurve(x.curve); } catch (e) { bad('la curva de aprendizaje (' + (e as Error).message + ')'); }
+    if (curve && curve.total !== games) bad('la curva de aprendizaje (no cuenta las mismas partidas)');
+  }
   if (!nat(seed) || seed < 1) bad('semilla');
   if (!nat(games, 1e7)) bad('partidas');
   if (!nat(steps, 1e9)) bad('pasos');
@@ -77,7 +89,7 @@ export function checkSave(x: unknown, version: number = SNAKE_VERSION): SnakeSav
   if (!obj(target)) bad('copia de la red');
   if (!obj(brain) || !nat(brain.steps) || !Array.isArray(brain.travel) || brain.travel.length !== 1 || !Array.isArray(brain.travel[0])
     || brain.travel[0].length !== OUT_N || !brain.travel[0].every((v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0)) bad('cerebro');
-  return { vision: vision as Vision, seed: seed as number, games: games as number, steps: steps as number, best: best as number, results: rs, net: net as Weights, target: target as Weights, brain: { steps: (brain as Counters).steps, travel: (brain as Counters).travel.map((l) => l.slice()) } };
+  return { vision: vision as Vision, seed: seed as number, games: games as number, steps: steps as number, best: best as number, results: rs, curve, net: net as Weights, target: target as Weights, brain: { steps: (brain as Counters).steps, travel: (brain as Counters).travel.map((l) => l.slice()) } };
 }
 
 /** Pone los pesos de un texto de `ModelSaver` en una red nueva (comprueba forma y números; lanza si no encaja). */
@@ -92,7 +104,7 @@ export function restoreSession(save: SnakeSave): { session: Session; brain: Coun
   weightsInto(net, save.net, 'la red'); weightsInto(target, save.target, 'su copia');
   const session = new Session(save.seed, net, save.vision);
   session.target.setWeights(target.getWeights());
-  session.restoreProgress(save);
+  session.restoreProgress({ ...save, curve: save.curve ?? undefined });
   return { session, brain: { steps: save.brain.steps, travel: save.brain.travel.map((l) => l.slice()) }, seed: save.seed };
 }
 
