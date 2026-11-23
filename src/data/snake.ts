@@ -17,6 +17,10 @@
  */
 import { Adam, NetworkN, linear, seededRandom, setRandom } from '@dniskav/neuron';
 import { mulberry32 } from '../viz/core/rng';
+import { CurveHistory, type CurveData } from '../viz/learningCurve';
+
+/** Cuándo se dice que la red «ya no mejora» (ver `plateau` en `viz/learningCurve.ts`): 50 partidas frente a las 50 de antes, no antes de 150 partidas ni dentro de la fase del dado ε (`EPS_GAMES`). */
+export const PLATEAU = { window: 50, minGames: 150, skip: 70, minGain: 0.5, k: 0.4, better: 'up' } as const;
 
 // ---------- el juego ----------
 export const SIZE = 10;
@@ -314,6 +318,8 @@ export class Session {
   games = 0;
   /** Comidas de cada partida acabada, en orden. */
   results: GameResult[] = [];
+  /** Comidas de TODAS las partidas desde que nació la red, acotado (ver `viz/learningCurve.ts`): lo que dibuja la curva de aprendizaje. */
+  readonly curve = new CurveHistory();
   /** El récord: lo más que ha comido en UNA partida desde que se creó esta red (se guarda aparte: `results` puede estar recortada). */
   best = 0;
   /** Jugadas de esta partida en las que tiró el dado. */
@@ -354,7 +360,7 @@ export class Session {
     if (this.steps % SYNC === 0) this.target.setWeights(this.net.getWeights());
     let record = false;
     if (r.done) {
-      this.results.push({ food: this.game.eaten, steps: this.game.steps, death: r.death, explored: this.rolled, trapped: this.game.trapped }); this.games++;
+      this.results.push({ food: this.game.eaten, steps: this.game.steps, death: r.death, explored: this.rolled, trapped: this.game.trapped }); this.curve.add(this.game.eaten); this.games++;
       if (this.game.eaten > this.best) { this.best = this.game.eaten; record = true; }
     }
     return { ...r, decision: dec, trains, gameOver: r.done, length: this.game.body.length, record };
@@ -371,8 +377,10 @@ export class Session {
     return BATCH;
   }
   /** Lo que se guarda y se recupera de lo jugado (la red y la copia congelada se restauran aparte; la memoria de jugadas no se guarda). */
-  restoreProgress(p: { steps: number; games: number; best: number; results: GameResult[] }): void {
+  restoreProgress(p: { steps: number; games: number; best: number; results: GameResult[]; curve?: CurveData }): void {
     this.steps = p.steps; this.games = p.games; this.best = p.best; this.results = p.results.map((r) => ({ ...r }));
+    /* sin curva (guardado antiguo): arranca de las últimas partidas que sí se guardaron */
+    if (p.curve) this.curve.load(p.curve); else this.curve.seed(this.results.map((r) => r.food));
   }
   /** Empieza la partida siguiente. */
   next(): void { this.game.reset(); this.rolled = 0; }

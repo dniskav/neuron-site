@@ -133,3 +133,10 @@ export function computeTeamCmp(): Record<number, TeamCmp> {
   KS.forEach((k) => { const r = runTeam(k); c[k] = { flat: r.flat, pct: r.pct, yes: r.yes, tags: r.tags }; });
   return (cmpCache = c);
 }
+
+/** Cuánto se equivoca el equipo en los 60 colores con los que aprende: error cuadrático medio (de `predict`) frente a lo correcto (1 intermedio, 0 el resto), tras cada repaso. */
+export function passError(net: NetworkN): number {
+  return TRAIN.reduce((s, c) => s + (net.predict(c)[0] - labelOf(c)) ** 2, 0) / TRAIN.length;
+}
+/** «Ya no mejora» en los repasos (ver `plateau`, `viz/learningCurve.ts`): 10 repasos frente a los 10 de antes, desde el 40. Medido: la neurona sola se queda en 0,22 desde el principio; con 2 o 3 neuronas cae hasta ~0,001 y se aplana hacia el repaso 100. */
+export const PLATEAU = { window: 10, minGames: 40, skip: 0, minGain: 0.004, k: 0.4, better: 'down' } as const;

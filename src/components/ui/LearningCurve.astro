@@ -1,0 +1,6 @@
+---
+/** Lienzo de la curva de aprendizaje (la dibuja `mountLearningCurve`, `ui/LearningCurve.ts`). El rótulo lo reescribe el TS con lo que se ve. */
+interface Props { id: string; label: string; class?: string }
+const { id, label, class: cls = '' } = Astro.props;
+---
+<canvas id={id} class={('lcurve ' + cls).trim()} role="img" aria-label={label}></canvas>

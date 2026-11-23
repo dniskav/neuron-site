@@ -10,7 +10,7 @@
  */
 import type { NetworkN } from '@dniskav/neuron';
 import {
-  BLOCK_LABEL, BOUND_LABEL, BRAIN_SCALE, CONT_LABEL, CURVE_LABEL, HIDDEN, HW, INPUT_NAMES, RULES, TEAM, WALLS_LABEL, blockBox, blockExplain, boundExplain, caught, contExplain, curveExplain, rulesOf, feats, finalDrop, newBlockState, newModel,
+  BLOCK_LABEL, BOUND_LABEL, BRAIN_SCALE, CONT_LABEL, CURVE_LABEL, HIDDEN, HW, INPUT_NAMES, PLATEAU, RULES, TEAM, WALLS_LABEL, blockBox, blockExplain, boundExplain, caught, contExplain, curveExplain, rulesOf, feats, finalDrop, newBlockState, newModel,
   nextJourney, paddleAt, passesFor, predictX, refill, restart, returned, reviewChunk, review, teamActNames, wallsExplain,
   type BlockState, type Drop, type Journey, type Kind, type Part, type Prev, type Rules, type Team,
 } from '../../data/paleta';
@@ -32,7 +32,8 @@ import { brainAria, mountBrainMeter } from '../ui/mountMeter';
 import { Narrator } from '../ui/Narrator';
 import { PaletaBrainPanel } from '../ui/PaletaBrainPanel';
 import { PauseControl } from '../ui/PauseControl';
-import { ResultStrip } from '../ui/Strips';
+import { FLAT_MESSAGE, mountLearningCurve } from '../ui/LearningCurve';
+import { CurveHistory, plateau } from '../../viz/learningCurve';
 import { Toggle } from '../ui/Toggle';
 
 type Mode = 'slow' | 'fast' | 'batch';
@@ -154,11 +155,19 @@ export function startPaleta(): void {
   const setStatus = (t: string): void => nar.status(t), say = (t: string): void => nar.say(t);
   const busy = (): boolean => phase !== 'idle' || queue.left > 0 || rv.active;
   const okCount = (): number => recent.filter(Boolean).length;
-  const strip = new ResultStrip($('pastrip'), countEl, {
-    count: (ok, n, extra) => ok + '/' + n + ' atrapadas (' + Math.round((ok / n) * 100) + ' %)' + extra,
-    empty: 'Ninguna bola todavía',
-    aria: (ok, n) => 'Las últimas ' + n + ' bolas: ' + ok + ' atrapadas',
-    emptyAria: 'Las últimas bolas: todavía ninguna',
+  /** La curva: cada bola vale 1 (atrapada) o 0, desde que se creó esta red (`recent` son solo las últimas 20, para los textos). */
+  const curve = new CurveHistory();
+  const flatNow = (): boolean => !!plateau(curve.recent, curve.total - curve.recent.length, PLATEAU)?.flat;
+  /** La frase de la línea de la curva: «12/20 atrapadas (60 %) · 300 guardadas»; si ya no mejora, eso ocupa el sitio de las guardadas. */
+  const countText = (): string => {
+    const n = recent.length;
+    if (!n) return 'Ninguna bola todavía';
+    return okCount() + '/' + n + ' atrapadas (' + Math.round((okCount() / n) * 100) + ' %)' + (flatNow() ? ' · ya no mejora' : ' · ' + saved.length + (saved.length === 1 ? ' guardada' : ' guardadas'));
+  };
+  const curveLoop = mountLearningCurve($('pastrip'), {
+    history: () => curve, plateau: () => plateau(curve.recent, curve.total - curve.recent.length, PLATEAU), window: 20, minX: 50, yMax: () => 1,
+    yLabel: () => '100 %', yLabelAt: 'left', empty: 'aquí irá el % de bolas atrapadas',
+    aria: () => 'Curva de aprendizaje: bolas atrapadas (media de 20) en las ' + curve.total + ' bolas de esta red' + (curve.total ? ', ahora ' + Math.round((curve.meanLast(20) ?? 0) * 100) + ' por ciento' : '') + (flatNow() ? '. ' + FLAT_MESSAGE + ' Sigue ajustándose, pero ya no mejora.' : '') + '.',
   });
   /**
    * Un cerebro lleno y un % bajo es CORRECTO: el llenado es lo que ha cambiado cada neurona; el % es lo que acierta la red entera.
@@ -170,7 +179,7 @@ export function startPaleta(): void {
     const changed = kind === 'solo' && walls && n >= 10 && okCount() / n < 0.5 && fillOf(travel[0] ?? 0, BRAIN_SCALE.solo) >= 0.6;
     noteEl.hidden = !changed; noteEl.textContent = changed ? 'Ha cambiado mucho, pero una sola neurona no puede con los rebotes.' : '';
   }
-  function paintStrip(): void { strip.paint(recent, ' · ' + saved.length + (saved.length === 1 ? ' guardada' : ' guardadas')); paintBrainNote(); }
+  function paintStrip(): void { countEl.textContent = countText(); curveLoop.redraw(); paintBrainNote(); }
   function paintButtons(): void {
     const dis = busy() && !auto.running;
     goBtn.disabled = b10.disabled = b100.disabled = dis;
@@ -192,9 +201,10 @@ export function startPaleta(): void {
     if (cont && gameMsg) return gameMsg;
     if (!saved.length) return (kind === 'solo' ? 'Neurona nueva' : 'Equipo nuevo') + ' · pulsa «Lanzar bola»';
     const n = recent.length;
+    if (flatNow()) return FLAT_MESSAGE + (kind === 'solo' && walls ? ' Prueba «Cerebro: equipo».' : '');
     return 'Atrapó ' + okCount() + ' de ' + (n >= WINDOW ? 'las últimas ' : '') + n;
   }
-  function pushRecent(ok: boolean): void { recent.push(ok); while (recent.length > WINDOW) recent.shift(); }
+  function pushRecent(ok: boolean): void { curve.add(ok ? 1 : 0); recent.push(ok); while (recent.length > WINDOW) recent.shift(); }
   function updateCode(): void { code.patch({ kind, walls, ceiling: cont, rebound: cont, block: blockOn, team: { ...team }, saved: saved.slice(-400) }); }
 
   const outView = (): NeuronView => nv.layers[nv.layers.length - 1][0];
@@ -216,7 +226,7 @@ export function startPaleta(): void {
     const r = restart({ kind: k, rules: rulesNow(), team }); kind = r.cfg.kind; net = r.net; carry = r.prev; trained = false; bs = r.bs; shownBlock = null; poofs = []; syncBlock();
     nv = new NetworkView(net, viewOptions(k), layoutOf(k), nv);
     meter.setModel(net); meter.track(nv.observed, BRAIN_SCALE[k]);
-    saved = r.saved; recent.length = 0; streak = best = 0; gameMsg = '';
+    saved = r.saved; recent.length = 0; curve.reset(); streak = best = 0; gameMsg = '';
     marks.pred = marks.land = marks.shown = null; trail = null; shownPred = null;
     paddle.x = paddle.target = 0.5;
     updateCode(); paintStrip(); paintButtons(); setStatus(idleStatus());
@@ -237,7 +247,7 @@ export function startPaleta(): void {
   function setWalls(on: boolean): void {
     if (walls === on) return;
     cancelRun(); sec.dataset.tog = 'walls';
-    walls = on; saved = []; recent.length = 0; marks.pred = marks.land = marks.shown = null; trail = null;
+    walls = on; saved = []; recent.length = 0; curve.reset(); marks.pred = marks.land = marks.shown = null; trail = null;
     updateCode(); paintStrip(); paintButtons();
     setStatus(on ? 'Con paredes la bola rebota · las caídas de antes ya no sirven · lanza bolas' : 'Sin paredes · lanza bolas');
     say(on ? 'Paredes puestas: la bola rebota. Se borran las caídas guardadas.' : 'Sin paredes. Se borran las caídas guardadas.');

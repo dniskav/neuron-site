@@ -8,7 +8,7 @@
  * una tanda de partidas deprisa (trabajo repartido en fotogramas: la página no se congela) y «Míralo solo».
  */
 import {
-  BRAIN_SCALE, HELP_RGB, LEVELS, MOVES, SIZE, WARM, Session, evaluate, fateOf, inCount, randomScore, ruleHelpScore, ruleScore, trappedShare,
+  BRAIN_SCALE, HELP_RGB, PLATEAU, LEVELS, MOVES, SIZE, WARM, Session, evaluate, fateOf, inCount, randomScore, ruleHelpScore, ruleScore, trappedShare,
   type Decision, type GameResult, type StepInfo, type Vision,
 } from '../../data/snake';
 import { WINDOW, buildScript, num, runAuto, type AutoApi, type AutoCtx } from '../../data/snakeAuto';
@@ -16,6 +16,8 @@ import { SNAKE_KIND, SNAKE_STORE_KEY, SNAKE_VERSION, loadSnake, toSave, type Cou
 import { newSnakeCodeState, rawText, renderCodeHtml, type SnakeCodeState } from '../../data/snakeCode';
 import { TAU, font, glow, rrect } from '../../viz/core/canvas';
 import { createLoop } from '../../viz/core/loop';
+import { FLAT_MESSAGE, mountLearningCurve } from '../ui/LearningCurve';
+import { plateau, type Plateau } from '../../viz/learningCurve';
 import { reducedMotion } from '../../viz/core/motion';
 import { inputsOutputsLayout, type NetworkLayout } from '../../viz/geometry';
 import { BrainMeter, fmtCount } from '../../viz/BrainMeter';
@@ -52,7 +54,6 @@ const IN_SHORT = ['peligro izq.', 'peligro delante', 'peligro der.', 'comida del
 const GAMES_PER_FRAME = 2, BUDGET_MS = 9;
 /** Cuánto cambio medio de un peso cuenta como «máximo» al pulsar la corrección de una neurona (ver `NeuronView.learn`). */
 const REF = 0.12;
-const CHART_N = WINDOW * 3;
 const clamp01 = (x: number): number => Math.max(0, Math.min(1, x));
 
 function layoutOf(v: Vision): { layout: NetworkLayout; inputs: [number, number][] } {
@@ -138,7 +139,22 @@ export function startSnake(): void {
   // ---------- interfaz ----------
   const busy = (): boolean => mode !== 'idle';
   const say = (t: string): void => nar.say(t), setStatus = (t: string): void => nar.status(t);
+  /** ¿Ya no mejora? Se calcula al acabar cada partida (la regla está en `plateau`, `viz/learningCurve.ts`). Antes de la partida 150 y en la fase del dado, no se dice nada. */
+  let plKey = '', plVal: Plateau | null = null;
+  const plateauNow = (): Plateau | null => {
+    const c = session.curve, key = vision + ':' + c.total + ':' + (c.recent.length ? c.recent[c.recent.length - 1] : '');
+    if (key !== plKey || !c.total) { plKey = key; plVal = plateau(c.recent, c.total - c.recent.length, PLATEAU); }
+    return plVal;
+  };
+  const flatNow = (): boolean => !!plateauNow()?.flat;
+  const flatText = (): string => FLAT_MESSAGE + (vision === 'ojos' ? ' Prueba «con ayuda».' : '');
+  /** La primera vez que la curva se aplana, se dice (lectores de pantalla); si vuelve a mejorar y se aplana otra vez, se dice otra vez. */
+  let flatSaid = false;
+  const announceFlat = (): void => { const f = flatNow(); if (f && !flatSaid) say(flatText() + ' Sigue ajustándose, pero ya no mejora.'); flatSaid = f; };
+  const curveAria = (): string => 'Curva de aprendizaje: comidas por partida (media de ' + WINDOW + ') en las ' + session.curve.total + ' partidas de esta red'
+    + (flatNow() ? '. ' + flatText() + ' Sigue ajustándose, pero ya no mejora.' : '.');
   const meanText = (): string => {
+    if (flatNow()) return 'sigue ajustándose, pero ya no mejora';
     const n = Math.min(WINDOW, session.games);
     if (!n) return 'aún sin partidas';
     return n === 1 ? 'comidas en la primera partida: ' + num(session.meanLast(1), 0) : 'comidas: media de las ' + (n < WINDOW ? '' : 'últimas ') + n + (n < WINDOW ? ' partidas' : '') + ' = ' + num(session.meanLast(WINDOW));
@@ -174,7 +190,7 @@ export function startSnake(): void {
   function idleStatus(): string {
     if (!session.games) return (vision === 'ayuda' ? 'Red nueva, con ayuda' : 'Red nueva') + ' · pulsa «Una partida»';
     const r = session.results[session.results.length - 1];
-    return 'Partida ' + session.games + ': ' + how(r).toLowerCase().replace(/^./, (c) => c.toUpperCase());
+    return flatNow() ? flatText() : 'Partida ' + session.games + ': ' + how(r).toLowerCase().replace(/^./, (c) => c.toUpperCase());
   }
   function paintBars(dec: Decision | null): void {
     if (!dec) { bars.paint({ values: null }); return; }
@@ -203,7 +219,7 @@ export function startSnake(): void {
   function install(s: Session, counters?: Counters, newSeed?: number): void {
     cancelRun();
     if (newSeed !== undefined) seed = newSeed;
-    session = s; vision = s.vision; lay = lays[vision]; trained = !!counters && counters.steps > 0;
+    session = s; flatSaid = false; vision = s.vision; lay = lays[vision]; trained = !!counters && counters.steps > 0;
     nv = new NetworkView(session.net, viewOptions, lay.layout, nv);
     if (counters) nv.observed.restore(counters);
     meter.setModel(session.net); meter.track(nv.observed, BRAIN_SCALE);
@@ -288,7 +304,7 @@ export function startSnake(): void {
   function finishGame(res: GameResult, instant: boolean): void {
     updateCode(true); saved.save();
     setStatus(how(res) + (session.memory.length < WARM ? ' · lo guarda (aún tiene pocos recuerdos para repasar)' : ' · lo guarda y lo repasa'));
-    say(how(res) + '. ' + meanText());
+    say(how(res) + '. ' + meanText()); announceFlat();
     if (instant) { mode = 'idle'; queue.left = 0; paintButtons(); redraw(); return; }
     over = { res, t: 0 };
   }
@@ -316,7 +332,7 @@ export function startSnake(): void {
     setStatus('Entrenando… ' + queue.done + '/' + (queue.done + queue.left) + ' partidas · come de media ' + num(session.meanLast(WINDOW)));
     updateCode(); paintScore(); saved.save(1500);
     if (queue.left <= 0) {
-      mode = 'idle'; pumping = false; look = null; showIdle(); updateCode(true); paintButtons(); setStatus(idleStatus()); say(meanText());
+      mode = 'idle'; pumping = false; look = null; showIdle(); updateCode(true); paintButtons(); setStatus(idleStatus()); say(meanText()); announceFlat();
       nv.neurons.forEach((v) => v.sync(true)); saved.save(); redraw();
     }
   }
@@ -450,30 +466,6 @@ export function startSnake(): void {
     ctx.textAlign = 'left';
   }
 
-  // ---------- dibujo: las comidas de cada partida ----------
-  function drawCurve(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-    const res = session.results.slice(-CHART_N), yMax = Math.max(Math.ceil(vision === 'ayuda' && ruleHelp !== null ? ruleHelp : rule) + 4, ...res.map((r) => r.food + 1)), base = h - 3, top = 12, Y = (v: number): number => base - (v / yMax) * (base - top);
-    const bw = w / CHART_N;
-    ctx.fillStyle = 'rgba(255,255,255,.04)'; rrect(ctx, 0, top - 2, w, base - top + 5, 5); ctx.fill();
-    res.forEach((r, i) => {
-      const x = i * bw, last = i === res.length - 1;
-      ctx.fillStyle = last ? 'rgba(' + GOLD + ',.95)' : 'rgba(106,167,255,.78)';
-      if (r.food > 0) { ctx.fillRect(x + bw * 0.12, Y(r.food), bw * 0.76, base - Y(r.food)); } else { ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.fillRect(x + bw * 0.12, base - 1.5, bw * 0.76, 1.5); }
-    });
-    /* las reglas escritas a mano: lo que come una persona que sabe jugar y se lo escribió como «si» (nivel 2: también la que cuenta el sitio) */
-    const refLine = (v: number, text: string, rgb: string, below: boolean): void => {
-      const ry = Y(v);
-      ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(' + rgb + ',.7)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(0, ry); ctx.lineTo(w, ry); ctx.stroke(); ctx.setLineDash([]);
-      ctx.font = font(9.5); ctx.textBaseline = below ? 'top' : 'bottom'; ctx.textAlign = 'right';
-      const lw = ctx.measureText(text).width, ly = below ? ry + 1 : ry - 13;
-      ctx.fillStyle = 'rgba(12,12,14,.8)'; ctx.fillRect(w - lw - 7, ly, lw + 6, 12);
-      ctx.fillStyle = 'rgba(' + rgb + ',.95)'; ctx.fillText(text, w - 3, below ? ry + 2 : ry - 2);
-    };
-    refLine(rule, 'regla escrita a mano: ' + num(rule, 0), GOLD, vision === 'ayuda');
-    if (vision === 'ayuda' && ruleHelp !== null) refLine(ruleHelp, 'regla con ayuda: ' + num(ruleHelp, 0), HELP_RGB, false);
-    if (!res.length) { ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(141,137,125,.8)'; ctx.fillText('aquí irán las comidas de cada partida', w / 2, (top + base) / 2 + 4); ctx.textAlign = 'left'; }
-  }
-
   const boardLoop = createLoop(bcv, {
     draw(ctx, w, h, dt, t) {
       if (!reduced && !pause.paused) tick(dt);
@@ -481,7 +473,13 @@ export function startSnake(): void {
     },
   });
   const netLoop = createLoop(ncv, { draw(ctx, w, h, dt, t) { nv.update(pause.scale(dt)); drawNet(ctx, w, h, t); } });
-  const curveLoop = createLoop(ccv, { draw(ctx, w, h) { drawCurve(ctx, w, h); } });
+  /* la curva de aprendizaje: TODAS las partidas de esta red (`session.curve`), la meseta y las reglas escritas a mano */
+  const curveLoop = mountLearningCurve(ccv, {
+    history: () => session.curve, plateau: () => plateauNow(), window: WINDOW, minX: 50, empty: 'aquí irá lo que aprende, partida a partida',
+    refs: () => [{ value: rule, text: 'regla escrita a mano: ' + num(rule, 0), rgb: GOLD, below: vision === 'ayuda' }]
+      .concat(vision === 'ayuda' && ruleHelp !== null ? [{ value: ruleHelp, text: 'regla con ayuda: ' + num(ruleHelp, 0), rgb: HELP_RGB, below: false }] : []),
+    aria: curveAria,
+  });
   const meterLoop = mountBrainMeter({
     canvas: mcv, meter, reduced, dt: (dt) => pause.scale(dt), labelSize: 40,
     caption: { el: $('sncount'), text: meanText },
