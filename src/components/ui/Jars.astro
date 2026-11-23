@@ -1,0 +1,12 @@
+---
+/** Los frascos de «Comparar»: uno por clave, con su etiqueta (se maneja con `Jars`). */
+interface Props { id: string; keys: number[]; titles: Record<number, string> }
+const { id, keys, titles } = Astro.props as Props;
+---
+<div class="jars" id={id}>
+  {keys.map((k) => (
+    <div class="jar empty" data-k={k} title={titles[k]}>
+      <div class="jb"><div class="liq" style="--h:0%;--q:0"></div></div><span class="jl">{k}</span><span class="jp">–</span>
+    </div>
+  ))}
+</div>

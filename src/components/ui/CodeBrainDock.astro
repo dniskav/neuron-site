@@ -1,0 +1,25 @@
+---
+/**
+ * Los dos iconos de arriba del dibujo y sus paneles: `</>` (el código real de la pantalla) y el cerebro (lo que aprendió).
+ * Los ids salen de `prefix`: {p}code (envoltorio), {p}cbtn, {p}cpanel, {p}ccopy, {p}ccode, {p}bbtn, {p}bpanel, {p}bcopy.
+ * El cuerpo del panel del cerebro es el slot por defecto; el slot `before` va antes de los botones (p. ej. el de pausa) y `after` detrás (p. ej. `SavedModel`, el disquete).
+ * Se enlaza con `bindDock` (`dock.ts`).
+ */
+import { brainSvg, codeSvg, icoCopy } from './icons';
+interface Props { prefix: string; wrapId?: string; codeHtml: string; brainLabel: string }
+const { prefix: p, wrapId = p + 'code', codeHtml, brainLabel } = Astro.props as Props;
+---
+<div class="ecode" id={wrapId}>
+  <slot name="before" />
+  <button class="cbtn" id={p + 'cbtn'} type="button" aria-label="Ver el código" title="Ver el código" aria-expanded="false" aria-controls={p + 'cpanel'} set:html={codeSvg}></button>
+  <div class="cpanel" id={p + 'cpanel'} role="region" aria-label="Código fuente de esta pantalla" tabindex="-1" hidden>
+    <button class="ccopy" id={p + 'ccopy'} type="button" aria-label="Copiar el código" title="Copiar el código" set:html={icoCopy}></button>
+    <pre class="ccode" id={p + 'ccode'} set:html={codeHtml}></pre>
+  </div>
+  <button class="cbtn bbtn" id={p + 'bbtn'} type="button" aria-label="Ver lo que aprendió" title="Ver lo que aprendió" aria-expanded="false" aria-controls={p + 'bpanel'} set:html={brainSvg}></button>
+  <div class="cpanel bpanel" id={p + 'bpanel'} role="region" aria-label={brainLabel} tabindex="-1" hidden>
+    <button class="ccopy" id={p + 'bcopy'} type="button" aria-label="Copiar el código" title="Copiar el código" set:html={icoCopy}></button>
+    <slot />
+  </div>
+  <slot name="after" />
+</div>

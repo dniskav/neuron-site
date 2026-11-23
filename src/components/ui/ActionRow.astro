@@ -1,0 +1,6 @@
+---
+/** Una fila (o grupo) de botones de acción con su etiqueta para lectores de pantalla. */
+interface Props { class?: string; label: string }
+const { class: cls, label } = Astro.props as Props;
+---
+<div class={cls} role="group" aria-label={label}><slot /></div>

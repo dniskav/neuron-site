@@ -1,15 +1,79 @@
 ---
+import '../../styles/lab.css';
+import '../../styles/equipo.css';
+import '../../styles/paleta.css';
 import '../../styles/snake.css';
+import { newSnakeCodeState, renderCodeHtml } from '../../data/snakeCode';
+import { LEVELS, MAX_IDLE, SIZE } from '../../data/snake';
+import { WINDOW } from '../../data/snakeAuto';
+import ActionButton from '../ui/ActionButton.astro';
+import ActionRow from '../ui/ActionRow.astro';
+import AutoPanel from '../ui/AutoPanel.astro';
+import BrainMeter from '../ui/BrainMeter.astro';
+import CodeBrainDock from '../ui/CodeBrainDock.astro';
+import PauseButton from '../ui/PauseButton.astro';
+import SavedModel from '../ui/SavedModel.astro';
+import Toggle from '../ui/Toggle.astro';
+import ValueBars from '../ui/ValueBars.astro';
+
+const codeHtml = renderCodeHtml(newSnakeCodeState());
 ---
 <section id="snake" aria-labelledby="t-snake">
-  <p class="eyebrow rv" style="--d:0">05 · demo</p>
-  <h2 id="t-snake" class="rv" style="--d:1;margin-top:10px">Snake</h2>
-  <p class="sub rv" style="--d:2">Una serpiente que aprende a moverse, intento tras intento.</p>
-  <div class="frame rv" style="--d:3"><canvas id="snakecv" role="img" aria-label="Adelanto: una serpiente sencilla moviéndose por una cuadrícula"></canvas></div>
-  <span class="soon rv" style="--d:4"><i></i>próximamente: la demo real</span>
+  <div class="ehead">
+    <p class="eyebrow rv" style="--d:0">06 · aprender con premios</p>
+    <h2 id="t-snake" class="rv" style="--d:1">{LEVELS.ojos.title}</h2>
+    <p class="sub rv" id="snsub" style="--d:2">{LEVELS.ojos.sub}</p>
+  </div>
+  <div class="elab pal sn">
+    <div class="esets rv" style="--d:3">
+      <ActionButton variant="go" id="sngo">▶ Una partida</ActionButton>
+      <ActionRow class="pmore" label="Entrenar varias partidas deprisa">
+        <ActionButton id="sn10">Entrenar 10</ActionButton>
+        <ActionButton id="sn100">Entrenar 100</ActionButton>
+      </ActionRow>
+      <Toggle wrap="ptogi sntog" id="snvision" explainId="snvisionexp" label={LEVELS.ojos.toggle} title="Lo que ve la red: solo sus ojos (7 números) o sus ojos y una ayuda escrita por una persona (3 números más). Cambiarlo crea una red nueva y vacía." />
+      <i class="pbr" aria-hidden="true"></i>
+      <AutoPanel prefix="sn" part="button" />
+      <ActionButton variant="link" id="snreset">Empezar de cero</ActionButton>
+      <p class="enote" id="snnote">Es de verdad: la red aprende con <b>@dniskav/neuron</b>. Solo recibe premios: <b>+1</b> si come, <b>−1</b> si choca, un poquito menos por cada paso y <b>−0,5</b> si da vueltas {MAX_IDLE} pasos sin comer. El tablero es de {SIZE}×{SIZE}.</p>
+    </div>
+    <div class="pfield rv" style="--d:4">
+      <p class="snscore" id="snscore" role="group" aria-label="Marcador de comidas"><span>Esta partida <b id="snnow">0</b></span><span id="snenc" hidden title="De las últimas 20 partidas que acabaron mal, en cuántas ya no le quedaba sitio para moverse">Encerrada <b id="snencv">–</b></span><span>Récord <b id="snbest">0</b><i id="snrec" class="snrec" hidden> ¡nuevo!</i></span></p>
+      <div class="snplay">
+        <canvas id="snboard" role="img" aria-label="El tablero: la serpiente juega buscando la comida. Cuando la red mira, marca las tres casillas de delante, de la izquierda y de la derecha."></canvas>
+        <ValueBars id="snvals" label="Lo que la red cree que vale cada jugada" title="Lo que cree que vale cada jugada" rows={[
+          { name: 'izquierda', arrow: '←', rgb: '110,214,196' },
+          { name: 'recto', arrow: '↑', rgb: '200,150,255' },
+          { name: 'derecha', arrow: '→', rgb: '255,200,130' },
+        ]} />
+      </div>
+      <div class="pstripbox snstats">
+        <BrainMeter bare class="pmeter" id="snmeter" label="Cerebro de 3 neuronas, vacío: todavía no ha aprendido nada" />
+        <div class="pstripcol snstat">
+          <p class="pcount" id="sncount" aria-live="polite">aún sin partidas</p>
+          <canvas id="sncurve" class="sncurve" role="img" aria-label={`Comidas de cada una de las últimas ${WINDOW * 3} partidas`}></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="emid rv" style="--d:5">
+      <CodeBrainDock prefix="sn" codeHtml={codeHtml} brainLabel="Lo que aprendió la red">
+        <PauseButton slot="before" prefix="sn" />
+        <div id="snbbody"></div>
+        <pre class="ccode" id="snbcode"></pre>
+        <SavedModel slot="after" prefix="sn" label="Guardar y cargar" note="Es como guardar y cargar un modelo: se guarda lo que la red aprendió (sus 24 pesos) y las cuentas (partidas, récord, ajustes), no los recuerdos de cada jugada. Se guarda sola en este navegador; aquí puedes guardar momentos con nombre, descargarlos o cargarlos." />
+      </CodeBrainDock>
+      <canvas id="snnet" role="img" aria-label="La red real: mira siete cosas (peligro a la izquierda, delante y a la derecha, y dónde está la comida) y tiene tres neuronas, una por jugada, que dicen cuánto vale cada una. Al aprender, después de jugar llega la corrección y las conexiones cambian de grosor."></canvas>
+      <p class="estatus" id="snstatus">Red nueva · pulsa «Una partida»</p>
+      <AutoPanel prefix="sn" part="caption" />
+      <p class="eleg" id="snleg" data-base="1">Más grueso = cuenta más · cortado = resta. Cada neurona dice cuánto vale una jugada; la serpiente elige la que más vale, o a veces tira un dado.</p>
+    </div>
+  </div>
+  <p class="vh" id="snvhojos">Una serpiente juega en un tablero de {SIZE} por {SIZE}. Nadie le explica el juego. Una red de tres neuronas mira siete cosas: si hay peligro a la izquierda, delante o a la derecha, y dónde está la comida respecto a su rumbo. Cada neurona dice cuánto vale una jugada: girar a la izquierda, seguir recto o girar a la derecha. La serpiente elige la que más vale y a veces tira un dado y prueba otra al azar, porque si no, nunca descubriría nada nuevo. Solo recibe premios: más uno si come, menos uno si choca, un poquito menos por cada paso y menos medio si da vueltas sin comer. Cada jugada se guarda y la red repasa recuerdos al azar para acertar mejor lo que vale cada jugada. Jugando al azar come casi nada por partida; tras unas cien partidas come unas quince y después sigue en unas diecisiete. Una regla escrita a mano por una persona, ir hacia la comida evitando chocar de inmediato, come lo mismo: la red lo descubre sola. Con el tablero y la serpiente así de cortos no hace falta una capa de neuronas intermedia: la red con una capa intermedia aprende igual de bien, pero más despacio.</p>
+  <p class="vh" id="snvhayuda" hidden>Nivel 2: no encerrarse. La misma serpiente en el mismo tablero de {SIZE} por {SIZE}, y la misma red de tres neuronas y los mismos premios, pero ahora la red recibe diez números: los siete de antes y tres más que calcula una persona con código normal, no la red. Esos tres dicen si cabe la serpiente entera si gira a la izquierda, si sigue recto o si gira a la derecha: un relleno cuenta cuántas casillas libres puede alcanzar tras cada jugada y se divide por su largo. La red no sabe contar el sitio: solo aprende cuándo fiarse de esos tres números y cuándo ir a por la comida. Con solo sus ojos, la serpiente larga se encierra a sí misma y come unas diecisiete por partida; con la ayuda llega a unas treinta y tres, más que una regla escrita a mano con la misma ayuda, que come unas treinta. Se nota ya tras unas cincuenta partidas. La idea de contar el sitio es de una persona, no de la red.</p>
+  <p class="vh" id="snlive" aria-live="polite"></p>
 </section>
 
 <script>
-  import { startSnakePreview } from '../../viz/SnakePreview';
-  startSnakePreview(document.getElementById('snakecv') as HTMLCanvasElement);
+  import { startSnake } from './snakeScreen';
+  startSnake();
 </script>

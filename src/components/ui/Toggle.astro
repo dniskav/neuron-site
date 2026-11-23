@@ -1,0 +1,9 @@
+---
+/** Un interruptor con su explicación debajo (se maneja con `Toggle`). `wrap`: las clases del envoltorio. */
+interface Props { id: string; explainId: string; title: string; label: string; pressed?: boolean; wrap?: string }
+const { id, explainId, title, label, pressed = false, wrap = 'ptogi' } = Astro.props as Props;
+---
+<div class={wrap}>
+  <button class="qstep" id={id} type="button" aria-pressed={pressed ? 'true' : 'false'} aria-describedby={explainId} title={title}>{label}</button>
+  <p class="ptxt" id={explainId}></p>
+</div>

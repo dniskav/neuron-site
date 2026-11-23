@@ -20,6 +20,7 @@ npm install @dniskav/neuron
 - Neurona: https://neuron.dniskav.com/#neurona
 - Enséñale: https://neuron.dniskav.com/#ensenale
 - Equipo: https://neuron.dniskav.com/#equipo
-- Snake: https://neuron.dniskav.com/#snake
+- Paleta (¿Dónde caerá?): https://neuron.dniskav.com/#paleta
+- Snake (Nivel 1: aprender con premios, una red de 3 neuronas aprende a jugar solo con premios; Nivel 2: no encerrarse, la misma red recibe 3 números más que calcula una persona con código, cuánto sitio le queda tras cada jugada, y aprende cuándo fiarse de ellos: come ≈ 33 por partida frente a ≈ 19 con solo sus ojos): https://neuron.dniskav.com/#snake
 - Juegos: https://neuron.dniskav.com/#juegos
 - Historia: https://neuron.dniskav.com/#historia

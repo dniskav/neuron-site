@@ -60,28 +60,71 @@ export function diff(prev: NeuronSnap[][], next: NeuronSnap[][]): NeuronDelta[][
 
 /** Modelo observado: `train` devuelve, además, el Δ de cada neurona (por capa). */
 export class ObservedModel {
-  /** Último estado conocido: la referencia con la que se compara el siguiente paso. */
+  /** Último estado conocido: la referencia con la que se compara el siguiente paso (para los Δ de cada pulso). */
   last: NeuronSnap[][];
+  /**
+   * Lo que ha cambiado cada neurona desde que se creó este modelo observado (red nueva = cuenta a cero): la suma de
+   * los Σ|Δw| + |Δb| de CADA paso de aprendizaje, por capa. Se cuenta paso a paso, venga el `train` de donde venga (de
+   * esta clase o directo del modelo, p. ej. en un repaso), porque `train` del modelo se envuelve (solo este objeto, la
+   * librería no se toca): el camino recorrido, no solo la distancia entre dos fotos.
+   */
+  readonly travel: number[][];
+  /**
+   * Cuántas veces ha aprendido este modelo desde que se creó (red nueva = 0): una por cada `train` real, venga de donde
+   * venga. Cada una ajusta TODOS sus pesos y sesgos un poco, así que sigue subiendo aunque la red ya acierte todo.
+   */
+  steps = 0;
+  private step: NeuronSnap[][];
   constructor(public readonly model: ObservableModel) {
     this.last = snapshot(model);
+    this.step = this.last;
+    this.travel = this.last.map((layer) => layer.map(() => 0));
+    const train = model.train.bind(model);
+    model.train = (inputs: number[], target: unknown, lr: number): unknown => {
+      const out = train(inputs, target, lr);
+      const now = snapshot(model);
+      diff(this.step, now).forEach((layer, li) => layer.forEach((n, ni) => { this.travel[li][ni] += n.mag; }));
+      this.step = now;
+      this.steps++;
+      return out;
+    };
+  }
+  /** Compara con la última foto y la deja como referencia (el cambio de cada neurona desde entonces). */
+  private advance(): NeuronDelta[][] {
+    const now = snapshot(this.model);
+    const d = diff(this.last, now);
+    this.last = now;
+    return d;
   }
   /** Entrena un paso con el modelo real y devuelve la variación de cada neurona. */
   train(inputs: number[], target: number | number[], lr: number): NeuronDelta[][] {
     this.model.train(inputs, target, lr);
-    const now = snapshot(this.model);
-    const d = diff(this.last, now);
-    this.last = now;
-    return d;
+    return this.advance();
   }
   /** Vuelve a tomar la foto (por si los pesos se cambiaron por fuera). */
   resync(): void {
-    this.last = snapshot(this.model);
+    this.advance();
   }
   /** Δ acumulado respecto a la última foto, sin entrenar (para un bucle de repaso hecho por fuera). */
   poll(): NeuronDelta[][] {
-    const now = snapshot(this.model);
-    const d = diff(this.last, now);
-    this.last = now;
-    return d;
+    return this.advance();
+  }
+  /**
+   * Recupera lo contado de una red guardada (ajustes y cambio acumulado por neurona). Los PESOS ya deben estar puestos en el
+   * modelo (`setWeights`): aquí se vuelve a tomar la foto, para que el primer paso nuevo no cuente el salto como cambio.
+   * Valida antes de tocar nada: la misma forma que `travel`, números finitos y no negativos, ajustes enteros.
+   */
+  restore(state: { steps: number; travel: number[][] }): void {
+    const ok = Number.isInteger(state?.steps) && state.steps >= 0 && Array.isArray(state.travel) && state.travel.length === this.travel.length
+      && state.travel.every((l, li) => Array.isArray(l) && l.length === this.travel[li].length && l.every((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0));
+    if (!ok) throw new Error('ObservedModel.restore: los ajustes o el cambio acumulado no encajan con este modelo');
+    this.steps = state.steps;
+    state.travel.forEach((l, li) => l.forEach((v, ni) => { this.travel[li][ni] = v; }));
+    this.last = snapshot(this.model);
+    this.step = this.last;
+  }
+  /** `travel` aplanado, capa por capa (el mismo orden que las secciones del cerebro). */
+  travelFlat(): number[] {
+    return this.travel.flat();
   }
 }

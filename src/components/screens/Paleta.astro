@@ -1,0 +1,81 @@
+---
+import '../../styles/lab.css';
+import '../../styles/equipo.css';
+import '../../styles/paleta.css';
+import { newPaletaCodeState, renderCodeHtml } from '../../data/paletaCode';
+import { WINDOW } from '../../data/paletaAuto';
+import ActionButton from '../ui/ActionButton.astro';
+import ActionRow from '../ui/ActionRow.astro';
+import AutoPanel from '../ui/AutoPanel.astro';
+import BrainMeter from '../ui/BrainMeter.astro';
+import CodeBrainDock from '../ui/CodeBrainDock.astro';
+import PauseButton from '../ui/PauseButton.astro';
+import Toggle from '../ui/Toggle.astro';
+
+const codeHtml = renderCodeHtml(newPaletaCodeState());
+---
+<section id="paleta" aria-labelledby="t-paleta">
+  <div class="ehead">
+    <p class="eyebrow rv" style="--d:0">05 · adivinar el futuro</p>
+    <h2 id="t-paleta" class="rv" style="--d:1">¿Dónde caerá?</h2>
+    <p class="sub rv" style="--d:2">Una neurona mira la bola y dice dónde caerá; la paleta solo va allí. Nadie le explica los rebotes: aprende de dónde cayó cada bola.</p>
+  </div>
+  <div class="elab pal">
+    <div class="esets rv" style="--d:3">
+      <ActionButton variant="go" id="pago">▶ Lanzar bola</ActionButton>
+      <ActionRow class="pmore" label="Lanzar varias bolas">
+        <ActionButton id="pa10">Lanzar 10</ActionButton>
+        <ActionButton id="pa100">Lanzar 100</ActionButton>
+      </ActionRow>
+      <i class="pbr" aria-hidden="true"></i>
+      <div class="pgrp pgame" id="pagame" role="group" aria-label="El juego: paredes, juego continuo y bloque">
+        <p class="pgl" aria-hidden="true">El juego</p>
+        <Toggle wrap="ptogi ptw" id="pawalls" explainId="pawallsexp" label="Paredes: no" title="Que la bola rebote en los lados" />
+        <Toggle wrap="ptogi ptc" id="pacont" explainId="pacontexp" label="Juego continuo: no" title="La paleta devuelve la bola, rebota en el techo y vuelve a bajar, sin parar; si no, cada bola cae desde el techo" />
+        <Toggle wrap="ptogi ptb" id="pablock" explainId="pablockexp" label="Bloque: no" title="Un bloque que la red no ve: si la bola rebota en él, la red vuelve a mirar y corrige" />
+      </div>
+      <i class="pbr pbr2" aria-hidden="true"></i>
+      <div class="pgrp pbrain" id="pabrain" role="group" aria-label="El cerebro: neurona sola o equipo, y cómo trabaja el equipo (cada cambio crea una red nueva)">
+        <p class="pgl" aria-hidden="true">El cerebro</p>
+        <ActionButton class="pteam" id="pateam" aria-pressed="false" title="Cambia entre una neurona sola y un equipo de 8 neuronas ayudantes (la red nace nueva y vacía)">Cerebro: neurona</ActionButton>
+        <div class="ptog" id="patog">
+          <Toggle id="pacurve" explainId="pacurveexp" label="Las del medio se doblan: sí" pressed title="Si las neuronas del medio doblan su respuesta o no (cambiarlo crea un equipo nuevo)" />
+          <Toggle id="pabound" explainId="paboundexp" label="Final dentro del campo: sí" pressed title="Si la neurona final se queda entre 0 y 1 o no (cambiarlo crea un equipo nuevo)" />
+        </div>
+      </div>
+      <AutoPanel prefix="pa" part="button" />
+      <i class="pbr pbr3" aria-hidden="true"></i>
+      <ActionButton variant="link" id="pareset">Empezar de cero</ActionButton>
+      <p class="enote" id="panote">Es de verdad: la neurona aprende con <b>@dniskav/neuron</b>. La paleta, no: solo va adonde la neurona dice y se para. Cada vez que la bola empieza a bajar, la neurona la mira de nuevo: dónde está, cuánto se inclina y a qué altura.</p>
+    </div>
+    <div class="pfield rv" style="--d:4">
+      <canvas id="pafield" role="img" aria-label="El campo: una bola baja desde arriba y una paleta espera en la línea de abajo. Puede haber un bloque en la mitad de arriba. Una marca dorada dice dónde cree la neurona que caerá y una marca verde dónde cayó de verdad."></canvas>
+      <div class="pstripbox">
+        <BrainMeter bare class="pmeter" id="pameter" label="Cerebro de una neurona, vacío: todavía no ha aprendido nada" />
+        <div class="pstripcol">
+          <p class="pcount" id="pacount" aria-live="polite">Ninguna bola todavía</p>
+          <div class="pstrip" id="pastrip" role="img" aria-label={`Las últimas ${WINDOW} bolas: atrapada o no`}></div>
+          <p class="pnote" id="panotebrain" hidden></p>
+        </div>
+      </div>
+    </div>
+    <div class="emid rv" style="--d:5">
+      <CodeBrainDock prefix="pa" codeHtml={codeHtml} brainLabel="Lo que aprendió la neurona">
+        <PauseButton slot="before" prefix="pa" />
+        <div id="pabbody"></div>
+        <pre class="ccode" id="pabcode"></pre>
+      </CodeBrainDock>
+      <canvas id="panet" role="img" aria-label="La neurona real: recibe dónde está la bola, cuánto se inclina y a qué altura empieza a bajar, y dice dónde cree que caerá. Al aprender, después de responder llega la corrección y las conexiones cambian de grosor."></canvas>
+      <p class="estatus" id="pastatus">Neurona nueva · pulsa «Lanzar bola»</p>
+      <AutoPanel prefix="pa" part="caption" />
+      <p class="eleg" id="paleg">Más grueso = cuenta más · cortado = resta. Marca dorada: lo que la neurona cree. Marca verde: dónde cayó de verdad.</p>
+    </div>
+  </div>
+  <p class="vh">Una bola baja desde arriba. La neurona recibe tres datos al empezar a bajar la bola, dónde está, cuánto se inclina y a qué altura empieza, y dice en qué punto cruzará la línea de abajo. La paleta va a ese punto y se para: es código normal, no aprende. Cuando la bola llega abajo se sabe dónde cayó de verdad, así que esa caída se guarda sin que nadie la etiquete y la neurona repasa todas las que lleva. Sin paredes, una sola neurona acierta con unas treinta caídas. Con paredes la bola rebota y una sola neurona no puede, como ya viste en Equipo; hace falta un equipo de neuronas. Con «Juego continuo» la paleta devuelve la bola hacia arriba, rebota en el techo y vuelve a bajar sin parar, en vez de lanzar otra. Con «Bloque» hay un obstáculo en la mitad de arriba que la red no ve: si la bola rebota en él, el bloque desaparece, aparece otro, y la red vuelve a mirar la bola desde su nueva altura y la paleta corrige. Una bajada que el bloque corta no se guarda como ejemplo, porque no llegó abajo. Una neurona sola aprende mal esas bajadas desde menos altura; un equipo las aprende.</p>
+  <p class="vh" id="palive" aria-live="polite"></p>
+</section>
+
+<script>
+  import { startPaleta } from './paletaScreen';
+  startPaleta();
+</script>

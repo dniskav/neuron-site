@@ -48,14 +48,35 @@ export class Pager {
 
     const h = (location.hash || '').slice(1);
     const hi = this.sections.findIndex((s) => s.id === h);
-    if (hi > 0) {
-      this.main.style.scrollBehavior = 'auto';
-      this.sections[hi].scrollIntoView({ block: 'start' });
-      this.main.style.scrollBehavior = '';
-    } else {
+    if (hi > 0) this.jumpOnLoad(hi);
+    else {
       this.sections[0].classList.add('in');
       this.setActive(0);
     }
+  }
+
+  /**
+   * Enlace directo (`/#colores`): se salta a la pantalla pedida y se vuelve a hacer cuando la página termina
+   * de cargar (fuentes, imágenes, canvas y pantallas que rellenan su contenido), porque el imán del scroll y
+   * los cambios de altura pueden dejar la página en otra pantalla. Si la persona ya ha movido la página, se respeta.
+   */
+  private jumpOnLoad(i: number): void {
+    try { history.scrollRestoration = 'manual'; } catch (e) { /* sin historial */ }
+    let touched = false;
+    const stop = (): void => { touched = true; };
+    ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach((n) => window.addEventListener(n, stop, { once: true, passive: true }));
+    const jump = (): void => {
+      if (touched) return;
+      const el = this.sections[i];
+      if (Math.abs(this.main.scrollTop - el.offsetTop) < 2) return;
+      this.main.style.scrollBehavior = 'auto';
+      el.scrollIntoView({ block: 'start' });
+      this.main.style.scrollBehavior = '';
+    };
+    jump();
+    if (document.readyState !== 'complete') window.addEventListener('load', () => { jump(); setTimeout(jump, 300); }, { once: true });
+    else setTimeout(jump, 300);
+    try { void document.fonts.ready.then(jump); } catch (e) { /* sin fuentes */ }
   }
 
   /** Lleva a la pantalla `i` con transición. */
@@ -78,6 +99,14 @@ export class Pager {
   activate(sec: HTMLElement): void {
     sec.classList.add('in');
     this.setActive(this.sections.indexOf(sec));
+  }
+
+  /**
+   * Las pantallas más altas que la ventana (móvil): se marcan como activas al cruzar el centro. `onHere(true|false)` avisa de
+   * cuándo la pantalla está en la franja central (p. ej. para la barra espaciadora).
+   */
+  followCenter(sec: HTMLElement, onHere?: (here: boolean) => void): void {
+    new IntersectionObserver((en) => { onHere?.(en[0].isIntersecting); if (en[0].isIntersecting) this.activate(sec); }, { root: this.main, rootMargin: '-45% 0px -45% 0px', threshold: 0 }).observe(sec);
   }
 
   /** Avisa cuando cambia la pantalla activa (la guía lo usará). */

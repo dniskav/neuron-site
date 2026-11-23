@@ -1,0 +1,31 @@
+---
+/**
+ * El botón del disquete y su panel «Guardado» (va en el slot `after` de `CodeBrainDock`). Ids según `prefix`: {p}sbtn, {p}spanel,
+ * {p}scopy, {p}sstat (qué pasó con el guardado), {p}ssave («Guardar»), {p}sdown, {p}sload, {p}sfile (el <input type=file>),
+ * {p}sview, {p}spre, {p}slist (la lista de guardados con nombre). `note` es el texto de qué se guarda y qué no. Se maneja con
+ * `SavedModel` (`SavedModel.ts`).
+ */
+import { icoCopy, saveSvg } from './icons';
+interface Props { prefix: string; label?: string; note: string }
+const { prefix: p, label = 'Guardado', note } = Astro.props as Props;
+---
+<button class="cbtn sbtn" id={p + 'sbtn'} type="button" aria-label="Guardar y cargar lo aprendido" title="Guardar y cargar" aria-expanded="false" aria-controls={p + 'spanel'} set:html={saveSvg}></button>
+<div class="cpanel spanel" id={p + 'spanel'} role="region" aria-label={label} tabindex="-1" hidden>
+  <div class="sbox">
+    <p class="bhead">{label}</p>
+    <p class="bnote">{note}</p>
+    <p class="sstat" id={p + 'sstat'} aria-live="polite"></p>
+    <div class="srow">
+      <button type="button" class="qstep" id={p + 'ssave'}>Guardar este momento</button>
+      <button type="button" class="qstep" id={p + 'sdown'}>Descargar</button>
+      <button type="button" class="qstep" id={p + 'sload'}>Cargar archivo</button>
+      <button type="button" class="qstep" id={p + 'sview'} aria-expanded="false" aria-controls={p + 'spre'}>Ver en texto</button>
+      <input type="file" id={p + 'sfile'} accept=".json,application/json" hidden tabindex="-1" aria-label="Elegir un archivo guardado" />
+    </div>
+    <ul class="slist" id={p + 'slist'} aria-label="Guardados"></ul>
+    <div class="stext" id={p + 'stext'} hidden>
+      <button class="ccopy" id={p + 'scopy'} type="button" aria-label="Copiar el texto" title="Copiar el texto" set:html={icoCopy}></button>
+      <pre class="ccode" id={p + 'spre'} tabindex="0" aria-label="Lo guardado, en texto"></pre>
+    </div>
+  </div>
+</div>

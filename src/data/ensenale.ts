@@ -15,6 +15,13 @@ export const INIT_SEED = 4;
 export const TRAIN_SEED = 382;
 export const EXAM_SEED = 5;
 export const FULLN = 3;
+/**
+ * Con cuánto cambio acumulado se llena el cerebro al 63 % (`fillOf`): el cambio es la suma, paso a paso, de Σ|Δw| + |Δb|
+ * de la neurona (`ObservedModel.travel`). Medido con la neurona real y sus 40 repasos: sin enseñarle, 0 (vacío); 2 ejemplos
+ * 2,7 (se llena 10 %); 3 → 11 (36 %); 8 → 24 (62 %); 13 → 40 (80 %); 21 → 63 (92 %); 34 → 95 (98 %). Con 25, bien enseñada
+ * queda casi llena y sin enseñar, vacía.
+ */
+export const BRAIN_SCALE = 25;
 
 function lin(v: number): number {
   return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);

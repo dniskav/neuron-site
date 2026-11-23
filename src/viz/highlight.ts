@@ -3,7 +3,7 @@ export function escapeHtml(x: string): string {
   return x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-const RX = /(\/\/.*$)|("[^"]*")|\b(import|from|const|for|let|of|true|false)\b|\b(\d+(?:\.\d+)?)\b|\b(train|predict|setWeights|setRandom|seededRandom)\b|\b(NeuronN|NetworkN|Adam)\b/g;
+const RX = /(\/\/.*$)|("[^"]*")|\b(import|from|const|for|let|of|true|false)\b|\b(\d+(?:\.\d+)?)\b|\b(train|predict|setWeights|setRandom|seededRandom|irA|push)\b|\b(NeuronN|NetworkN|Adam|linear|tanh|sigmoid)\b/g;
 
 /** Resalta UNA línea de código y devuelve HTML con `<span class="k|s|c|n|f|t">`. */
 export function highlight(line: string): string {

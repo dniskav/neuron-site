@@ -1,0 +1,8 @@
+---
+/** El botón «Míralo solo» y el rótulo de cada paso (se manejan con `AutoMode`). Ids: {p}auto y {p}cap. Con `cap`, solo el botón. */
+interface Props { prefix: string; part: 'button' | 'caption' }
+const { prefix: p, part } = Astro.props as Props;
+---
+{part === 'button'
+  ? <button class="nauto" id={p + 'auto'} type="button" aria-pressed="false" title="La pantalla se enseña sola, paso a paso">▶ Míralo solo</button>
+  : <p class="nautocap" id={p + 'cap'} hidden></p>}

@@ -1,0 +1,170 @@
+/* Colores (¿Qué color es?): una capa de neuronas; conjuntos, chips de nombres, tarjetas con anillo, comparativa. */
+.eleg.m-learn #nlg-e,.eleg.m-exam #nlg-a{opacity:.35}
+.nwarn{min-height:1.3em;margin-top:2px;text-align:center;font-family:var(--mono);font-size:12px;color:#ffb36b}
+/* salidas: una rejilla compacta de chips (caben muchos nombres, también a 375 px) */
+.nchips{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:4px;margin-top:6px}
+.nchip{--v:.15;position:relative;display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid #ffffff1a;font-size:12.5px;line-height:1.2;color:#c8c3b4;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--c) calc(var(--v) * 60%),transparent),transparent 140%);transition:border-color .3s,box-shadow .3s}
+.nchip i{flex:none;width:11px;height:11px;border-radius:50%;background:var(--c);opacity:calc(.25 + var(--v) * .75);box-shadow:0 0 calc(var(--v) * 12px) var(--c)}
+.nchip.win{border-color:var(--c);color:#fff;font-weight:600;box-shadow:0 0 16px -2px var(--c)}
+.nchip.was::after{content:"era";margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--cool)}
+/* tarjetas: anillo y frase de una neurona de nombre */
+.ncards{display:flex;flex-wrap:wrap;gap:6px}
+.ncards-live{margin-top:6px}
+.ncard{--c:255,170,90;position:relative;flex:1 1 150px;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 20px;border:1px solid rgba(var(--c),.35);border-radius:12px;background:#ffffff05;transition:border-color .3s,background .3s}
+.ncard>b{position:absolute;left:6px;top:4px;font-family:var(--mono);font-size:10px;font-weight:500;color:rgb(var(--c))}
+.ncard .ring{flex:none}
+.ncard .nphr{font-size:11.5px;line-height:1.3;color:#d6d1c0;text-align:left}
+.ncard .nw{display:block;margin-top:3px;font-family:var(--mono);font-size:10px;color:var(--mute)}
+.nzhint{margin:0;font-size:12px;color:var(--mute);text-align:center}
+#nzone{min-height:58px;align-items:center;justify-content:center}
+#nzone .ncard{flex:1 1 220px}
+.bpanel .ncards{padding:2px 14px 0}
+.bpanel .ncard{flex:1 1 220px}
+.ncmp{display:grid;gap:3px;padding:0 14px}
+.nrow{display:grid;grid-template-columns:86px minmax(0,1fr) 44px;align-items:center;gap:10px;padding:3px 6px;border:1px solid transparent;border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--mute)}
+.nrow.cur{border-color:#c9a22799;background:#c9a2270f;color:var(--gold-hi)}
+.nrow .cp{text-align:right;color:var(--fg)}
+.nbar{height:10px;border-radius:5px;background:#ffffff0a;box-shadow:inset 0 0 0 1px #ffffff14;overflow:hidden}
+.nbar i{display:block;height:100%;background:linear-gradient(90deg,#c9a227,#ffe08a)}
+/* examen de muchos colores: puntos */
+.cexam{display:grid;grid-template-columns:repeat(24,1fr);gap:3px;margin-top:6px;padding:7px 9px;border:1px solid var(--line);border-radius:14px;background:#ffffff05}
+.cexam i{position:relative;display:block;aspect-ratio:1;border-radius:50%;box-shadow:0 0 0 1px #ffffff30;transition:box-shadow .3s,transform .3s}
+.cexam i.now{box-shadow:0 0 0 2px var(--gold-hi),0 0 8px #ffe08a;transform:scale(1.3)}
+.cexam i.ok{box-shadow:0 0 0 1px #6aa7ff99}
+.cexam i.bad{box-shadow:0 0 0 1px #ff8a7899}
+/* la marca de cada color, encima de su bolita: ✓ en var(--cool) y ✗ en #ff8a78, como la tira de Enséñale */
+.cexam i.ok::after,.cexam i.bad::after{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-weight:800;font-size:11px;line-height:1;text-shadow:0 0 2px #000,0 0 3px #000,0 1px 2px #000}
+.cexam i.ok::after{content:"✓";color:var(--cool)}
+.cexam i.bad::after{content:"✗";color:#ff8a78}
+#colores .jars{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#colores .jb{max-width:44px;height:40px}
+#colores .jar .jl{font-size:11px}
+@media (max-width:899px){
+  .cexam{grid-template-columns:repeat(18,1fr)}
+  .nchips{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+}
+@media (prefers-reduced-motion:reduce){.nchip,.ncard,.cexam i{transition:none}}
+
+.nsw{display:inline-block;width:12px;height:12px;margin:0 5px -1px 1px;border-radius:50%;box-shadow:0 0 0 1px #ffffff77}
+.nwarn b{color:#ffd9a8;font-weight:600}
+.nwarn{min-height:2.6em;line-height:1.3;padding:0 4px}
+
+/* ---- simplificación: filas compactas, iconos en su propia fila, orden de lectura en móvil ---- */
+/* Crecer la capa: una sola fila «Nombres 3 + nombre» */
+.ngrow{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.ngrp{display:flex;align-items:center;gap:6px}
+.ngl{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.ngrp .qstep{width:32px;height:32px;padding:0;display:grid;place-items:center;font-size:18px;line-height:1}
+.ngrp .qname{width:auto;padding:0 14px;font-size:14px;font-family:inherit}
+.ngn{min-width:1.4em;text-align:center;font-family:var(--mono);font-size:15px;color:var(--gold-hi)}
+/* Ejemplos por nombre: una fila segmentada, con el acierto debajo del elegido (si existe) */
+.cseg{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#ffffff05}
+.cset{display:grid;justify-items:center;align-content:start;gap:1px;padding:7px 2px 5px;min-height:44px;border-right:1px solid var(--line);font-size:14px;color:var(--fg);transition:background .3s,color .3s}
+.cset:last-child{border-right:0}
+.cset:hover{background:#ffffff0c}
+.cset b{font-weight:600}
+.cset .res{font-family:var(--mono);font-size:10px;color:var(--gold-hi)}
+.cset:not(.on) .res{display:none}
+.cset.on{background:#c9a2271c;color:var(--gold-hi);box-shadow:inset 0 -2px 0 var(--gold)}
+#colores .qgo,#colores .e0{display:block;width:100%}
+#colores .e0{margin-top:8px}
+/* la fila de colores para aprender: una línea fina en escritorio */
+#colores .qdots{flex-wrap:nowrap;overflow:hidden;gap:1px;height:6px}
+#colores .qdots i{flex:none;width:5px;height:5px;box-shadow:0 0 0 .5px #ffffff47}
+#colores .nlabrow{margin-top:12px}
+.nlink{align-self:flex-start;margin-top:12px;padding:2px 0;font-size:12px;color:var(--mute);text-decoration:underline;text-underline-offset:3px}
+.nlink:hover{color:var(--fg)}
+.nlink:focus-visible,.ninfo:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+/* los iconos </> y cerebro van ENCIMA del lienzo, en su propia fila (no tapan los nombres) */
+#colores .ecv{display:flex;flex-direction:column}
+#colores .ecode{position:relative;flex:none;height:36px}
+#colores .ecv canvas{position:relative;inset:auto;flex:1 1 0;min-height:0;width:100%;height:auto}
+/* estado + «i» que despliega la leyenda */
+.nstat{display:flex;align-items:center;justify-content:center;gap:8px}
+.nstat .estatus{margin:6px 0 0}
+.ninfo{flex:none;width:22px;height:22px;margin-top:6px;border:1px solid var(--line);border-radius:50%;font-family:var(--mono);font-size:12px;line-height:1;color:var(--mute);display:grid;place-items:center}
+.ninfo:hover,.ninfo[aria-expanded="true"]{color:var(--gold-hi);border-color:#c9a22799}
+.eleg[hidden]{display:none}
+/* barra de acierto compacta (solo móvil) */
+.nacc{display:none;align-items:center;gap:10px}
+.nacc .nbar{flex:1}
+.nacc .nbar i{transition:width .8s var(--ease)}
+.nacct{min-width:3.2em;text-align:right;font-family:var(--mono);font-size:14px;color:var(--gold-hi)}
+@media (max-width:899px){
+  /* Todo lo interactivo cabe sin desplazarse entre la cabecera y el dock (375×812 y 412×860).
+     Filas: lienzo → nombres → estado → Enséñale + Examinar → ejemplos → color → acierto → tira del examen. Lo explicativo, debajo. */
+  #colores{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))}
+  #colores .ehead .eyebrow{font-size:10px;line-height:1.2}
+  #colores .ehead h2{font-size:24px;margin-top:2px;line-height:1.15}
+  #colores .ehead .sub{font-size:13px;line-height:1.3;margin-top:3px}
+  #colores .elab{flex-direction:row;flex-wrap:wrap;align-items:center;gap:7px;margin-top:6px}
+  #colores .elab>div{display:contents}
+  #colores .elab>div>*{flex:0 0 100%;min-width:0}
+  #colores .ecv{order:1;flex:none;aspect-ratio:auto;height:auto}
+  #colores .ecv canvas{flex:none;aspect-ratio:640/400;height:auto}
+  #colores .ngrow{order:2}
+  #colores .nstat{order:3}
+  #colores .eleg{order:3}
+  #colores .nwarn{order:4;margin:0}
+  #colores #ngo{order:5;flex:1 1 0;width:auto;margin:0;padding-top:11px;padding-bottom:11px}
+  #colores #n0{order:6;flex:0 0 auto;width:auto;margin:0;padding:10px 12px;font-size:13px;white-space:nowrap}
+  #colores .nlabsets{order:7}
+  #colores .cseg{order:8}
+  #colores .nlabpick{order:9}
+  #colores .pick{order:10}
+  #colores .nacc{order:11;display:flex}
+  #colores .cexam{order:12;display:grid}
+  #colores #nzone{order:20;min-height:0}
+  #colores .ephrase{order:21;margin:0;min-height:0}
+  #colores .nlink{order:30;margin:0}
+  #colores .elabel{margin:0;font-size:10px}
+  #colores .nchips{display:none}
+  #colores .nwarn{min-height:0}
+  #colores .nwarn:empty,#colores .ephrase:empty{display:none}
+  #colores .cset{min-height:36px;padding:5px 2px 3px}
+  #colores .pickc{width:34px;height:34px}
+  #colores .nstat .estatus,#colores .ninfo{margin-top:0}
+  /* la tira del examen, compacta: una muestra equilibrada (el examen va intercalado, un color de cada nombre por vuelta) */
+  #colores .cexam{grid-template-columns:repeat(24,1fr);gap:2px;margin:0;padding:4px 6px;border-radius:10px}
+  #colores .cexam i:nth-child(n+49){display:none}
+  #colores .cexam i.ok::after,#colores .cexam i.bad::after{font-size:9px}
+  /* fuera del móvil: lo que sobra (sigue en el panel del cerebro) */
+  #colores .nlabrow,#colores .qdots,#colores .enote,#colores .exlab,#colores .flask,#colores .jarlab,#colores .jars{display:none}
+}
+
+#npdot{background:conic-gradient(from 90deg,#e53935,#fdd835,#43a047,#1e88e5,#8e24aa,#e53935)}
+
+/* contador de neuronas: en la fila de los iconos, FUERA del lienzo */
+.ntotal{position:absolute;left:0;top:0;margin:0;line-height:34px;font-family:var(--mono);font-size:11.5px;color:var(--mute)}
+@media (max-width:899px){
+  /* en el nivel de puntos los nombres no caben en el lienzo: la leyenda de chips los da (el lienzo no crece) */
+  #colores[data-lod="dots"] .nchips{display:grid;order:19;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:3px}
+  #colores[data-lod="dots"] .nchip{padding:2px 6px;font-size:11px}
+}
+
+/* el lienzo no se encoge: la rejilla de chips solo aparece cuando el dibujo ya no puede escribir los nombres (puntos) */
+.nchips{display:none}
+#colores[data-lod="dots"] .nchips{display:grid}
+@media (min-width:900px){
+  #colores .ecv{flex:1 0 auto;min-height:calc(38px + clamp(260px,46vh,420px))}
+  #colores .ecv canvas{min-height:260px}
+}
+
+/* ---- «Míralo solo»: el botón (junto a «+ nombre») y el rótulo de cada paso, junto al lienzo ---- */
+.ngrow{gap:6px 10px}
+.nauto{margin-left:auto;flex:none;height:32px;padding:0 12px;border:1px solid #c9a22780;border-radius:999px;background:#c9a2271a;font-size:12.5px;line-height:1;color:var(--gold-hi);white-space:nowrap;transition:background .3s,border-color .3s}
+.nauto:hover{background:#c9a22733;border-color:var(--gold)}
+.nauto:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.nauto[aria-pressed="true"]{background:#c9a22733;border-color:var(--gold)}
+.nautocap{margin:8px 0 0;padding:8px 12px;border:1px solid #c9a22766;border-radius:12px;background:#c9a2271a;text-align:center;font-size:14px;line-height:1.35;color:var(--fg)}
+.nautocap[hidden]{display:none}
+.nautolink{color:var(--gold-hi);font-weight:600;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+@media (max-width:899px){
+  #colores .ngrow{order:2;flex-wrap:nowrap;gap:6px 8px}
+  #colores .nauto{height:30px;padding:0 10px;font-size:12px}
+  /* el rótulo ocupa el sitio del estado (y del aviso): la pantalla no crece ni tapa nada */
+  #colores .nautocap{order:3;margin:0;padding:5px 9px;font-size:12.5px;line-height:1.3;text-align:left}
+  #colores[data-cap="1"] .nstat,#colores[data-cap="1"] .nwarn{display:none}
+}
+@media (min-width:900px){.nauto{margin-left:0}}

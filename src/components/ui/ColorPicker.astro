@@ -1,0 +1,15 @@
+---
+/** El selector de color propio y los colores rápidos. Ids: {p}pick, {p}pickc, {p}ppop, {p}pq, {p}pdot. Se enlaza con `bindColorPicker`. */
+import { PICKER_CELLS, QUICK } from '../../data/ensenale';
+interface Props { prefix?: string }
+const { prefix: p = '' } = Astro.props as Props;
+---
+<div class="pick" id={p + 'pick'}>
+  <button class="pickc" id={p + 'pickc'} type="button" title="Probar un color" aria-label="Probar un color" aria-haspopup="true" aria-expanded="false" aria-controls={p + 'ppop'}><span class="pdot" id={p + 'pdot'}></span></button>
+  <div class="ppop" id={p + 'ppop'} role="group" aria-label="Muestras de color para probar" hidden>
+    {PICKER_CELLS.map((hex) => <button type="button" style={`background:${hex}`} tabindex="-1" aria-label={`Probar el color ${hex}`} data-hex={hex}></button>)}
+  </div>
+  <div class="pq" id={p + 'pq'} role="group" aria-label="Colores rápidos para probar">
+    {QUICK.map(([hex, name]) => <button type="button" style={`background:${hex}`} title={`Probar ${name}`} aria-label={`Probar ${name}`} data-hex={hex}></button>)}
+  </div>
+</div>

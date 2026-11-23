@@ -1,0 +1,10 @@
+---
+/**
+ * El lienzo del cerebro (se monta con `mountBrainMeter`): en el centro, los ajustes que lleva. Debajo, `{id}cap`: el % de
+ * aciertos de la red entera (`caption` de `mountBrainMeter`). Con `bare`, solo el lienzo con `class` propia y sin texto
+ * (la pantalla pone el % en otro sitio).
+ */
+interface Props { id: string; label: string; bare?: boolean; class?: string }
+const { id, label, bare = false, class: cls } = Astro.props as Props;
+---
+{bare ? <canvas class={cls} id={id} role="img" aria-label={label}></canvas> : <><div class="meter"><canvas id={id} role="img" aria-label={label}></canvas></div><p class="mcap" id={id + 'cap'}>aún sin examen</p></>}
