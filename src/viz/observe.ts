@@ -109,6 +109,20 @@ export class ObservedModel {
   poll(): NeuronDelta[][] {
     return this.advance();
   }
+  /**
+   * Recupera lo contado de una red guardada (ajustes y cambio acumulado por neurona). Los PESOS ya deben estar puestos en el
+   * modelo (`setWeights`): aquí se vuelve a tomar la foto, para que el primer paso nuevo no cuente el salto como cambio.
+   * Valida antes de tocar nada: la misma forma que `travel`, números finitos y no negativos, ajustes enteros.
+   */
+  restore(state: { steps: number; travel: number[][] }): void {
+    const ok = Number.isInteger(state?.steps) && state.steps >= 0 && Array.isArray(state.travel) && state.travel.length === this.travel.length
+      && state.travel.every((l, li) => Array.isArray(l) && l.length === this.travel[li].length && l.every((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0));
+    if (!ok) throw new Error('ObservedModel.restore: los ajustes o el cambio acumulado no encajan con este modelo');
+    this.steps = state.steps;
+    state.travel.forEach((l, li) => l.forEach((v, ni) => { this.travel[li][ni] = v; }));
+    this.last = snapshot(this.model);
+    this.step = this.last;
+  }
   /** `travel` aplanado, capa por capa (el mismo orden que las secciones del cerebro). */
   travelFlat(): number[] {
     return this.travel.flat();

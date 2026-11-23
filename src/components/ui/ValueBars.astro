@@ -1,0 +1,23 @@
+---
+/**
+ * Barras de «cuánto vale cada opción» (se manejan con `ValueBars`): una fila por opción, con su nombre, una barra que sale del
+ * centro (a la derecha vale más, a la izquierda y cortada vale menos que nada) y el número. Marca la opción elegida y, si la
+ * eligió el dado y no la red, lo dice con un dado. Ids: `{id}` (el grupo) y `{id}note` (el texto de debajo).
+ * Cada fila: `name` (el texto), `arrow` (un símbolo corto opcional) y `rgb` (su color, «r,g,b»).
+ */
+interface Row { name: string; arrow?: string; rgb: string }
+interface Props { id: string; label: string; rows: Row[]; title?: string }
+const { id, label, rows, title } = Astro.props as Props;
+---
+<div class="vbars" id={id} role="group" aria-label={label}>
+  {title && <p class="vbtitle" aria-hidden="true">{title}</p>}
+  {rows.map((r) => (
+    <div class="vbrow" style={`--c:${r.rgb}`}>
+      <span class="vbl">{r.arrow && <b aria-hidden="true">{r.arrow}</b>}{r.name}</span>
+      <span class="vbt"><i class="vbz"></i><i class="vbb"></i></span>
+      <span class="vbv">·</span>
+      <svg class="vbdie" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5" cy="5" r="1.2" fill="currentColor"/><circle cx="11" cy="5" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="5" cy="11" r="1.2" fill="currentColor"/><circle cx="11" cy="11" r="1.2" fill="currentColor"/></svg>
+    </div>
+  ))}
+  <p class="vbnote" id={id + 'note'} aria-live="off"></p>
+</div>

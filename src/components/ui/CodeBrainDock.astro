@@ -2,7 +2,7 @@
 /**
  * Los dos iconos de arriba del dibujo y sus paneles: `</>` (el código real de la pantalla) y el cerebro (lo que aprendió).
  * Los ids salen de `prefix`: {p}code (envoltorio), {p}cbtn, {p}cpanel, {p}ccopy, {p}ccode, {p}bbtn, {p}bpanel, {p}bcopy.
- * El cuerpo del panel del cerebro es el slot por defecto; el slot `before` va antes de los botones (p. ej. el de pausa).
+ * El cuerpo del panel del cerebro es el slot por defecto; el slot `before` va antes de los botones (p. ej. el de pausa) y `after` detrás (p. ej. `SavedModel`, el disquete).
  * Se enlaza con `bindDock` (`dock.ts`).
  */
 import { brainSvg, codeSvg, icoCopy } from './icons';
@@ -21,4 +21,5 @@ const { prefix: p, wrapId = p + 'code', codeHtml, brainLabel } = Astro.props as 
     <button class="ccopy" id={p + 'bcopy'} type="button" aria-label="Copiar el código" title="Copiar el código" set:html={icoCopy}></button>
     <slot />
   </div>
+  <slot name="after" />
 </div>

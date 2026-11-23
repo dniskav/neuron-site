@@ -5,6 +5,7 @@ import { PauseControl } from '../src/components/ui/PauseControl';
 import { Toggle } from '../src/components/ui/Toggle';
 import { Jars } from '../src/components/ui/Jars';
 import { Narrator } from '../src/components/ui/Narrator';
+import { ValueBars, barSpan } from '../src/components/ui/ValueBars';
 import { ExamChips, ProgressDots, ResultStrip, stripHtml } from '../src/components/ui/Strips';
 import { dockEls } from '../src/components/ui/dock';
 import { brainAria, brainName, pctCaption } from '../src/components/ui/mountMeter';
@@ -264,5 +265,43 @@ describe('AutoMode: «Míralo solo» (botón, rótulo, enlace, parar)', () => {
     auto.onPress(async (h) => { hs.push(h); await never(); });
     btn.click(); btn.click(); btn.click();
     expect(hs[0].dead()).toBe(true); expect(hs[1].dead()).toBe(false);
+  });
+});
+
+describe('ValueBars: «cuánto vale cada opción»', () => {
+  const mkRow = (): FakeEl => { const r = new FakeEl('div', 'vbrow'); r.sub = { '.vbb': new FakeEl('i'), '.vbv': new FakeEl('span') }; return r; };
+  const mk = (n = 3, max = 2) => {
+    const rows = Array.from({ length: n }, mkRow), note = new FakeEl('p', 'vbnote'), root = new FakeEl('div');
+    root.sub = { '.vbnote': note };
+    (root as unknown as { querySelectorAll: () => FakeEl[] }).querySelectorAll = () => rows;
+    return { rows, note, bars: new ValueBars(as(root), max) };
+  };
+  it('barSpan: sale del centro; positivo a la derecha, negativo a la izquierda, y se recorta', () => {
+    expect(barSpan(0, 2)).toEqual({ left: 50, width: 0 });
+    expect(barSpan(1, 2)).toEqual({ left: 50, width: 25 });
+    expect(barSpan(-1, 2)).toEqual({ left: 25, width: 25 });
+    expect(barSpan(9, 2)).toEqual({ left: 50, width: 50 });
+    expect(barSpan(-9, 2)).toEqual({ left: 0, width: 50 });
+  });
+  it('pinta el número real de cada opción, marca la elegida, la mejor y quién eligió (la red o el dado)', () => {
+    const { rows, note, bars } = mk();
+    expect(bars.length).toBe(3);
+    bars.paint({ values: [0.5, -1, 0.25], chosen: 0, best: 0, note: 'Elige la que más vale' });
+    expect(rows[0].sub['.vbv'].textContent).toBe('+0.50'); expect(rows[1].sub['.vbv'].textContent).toBe('−1.00');
+    expect(rows[1].classList.contains('neg')).toBe(true); expect(rows[0].classList.contains('neg')).toBe(false);
+    expect(rows[0].classList.contains('chosen')).toBe(true); expect(rows[0].classList.contains('rnd')).toBe(false);
+    expect(rows[0].sub['.vbb'].styleProps).toEqual({ left: '50%', width: '12.5%' });
+    expect(rows[1].sub['.vbb'].styleProps).toEqual({ left: '25%', width: '25%' });
+    expect(note.textContent).toBe('Elige la que más vale');
+    bars.paint({ values: [0.5, -1, 0.25], chosen: 2, best: 0, random: true, note: 'Probó al azar' });
+    expect(rows[2].classList.contains('chosen')).toBe(true); expect(rows[2].classList.contains('rnd')).toBe(true);
+    expect(rows[0].classList.contains('chosen')).toBe(false); expect(rows[0].classList.contains('best')).toBe(true);
+  });
+  it('sin valores, las barras quedan vacías y sin marcas', () => {
+    const { rows, note, bars } = mk();
+    bars.paint({ values: [1, 1, 1], chosen: 1 });
+    bars.paint({ values: null });
+    rows.forEach((r) => { expect(r.sub['.vbv'].textContent).toBe('·'); expect(r.sub['.vbb'].styleProps.width).toBe('0%'); expect(r.classList.contains('chosen')).toBe(false); });
+    expect(note.textContent).toBe('');
   });
 });

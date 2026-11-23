@@ -278,3 +278,25 @@ export function namedColumnsLayout(structure: number[], names: string[], hues: [
   r.layout.neurons[0].forEach((g, j) => g.dendrites.forEach((d, i) => { d.rgb = hues[i % hues.length]; d.name = j === 0 ? names[i] ?? '' : ''; d.labelBelow = i === names.length - 1 && names.length > 1; d.tipGlow = j === 0; }));
   return r;
 }
+
+/**
+ * Una sola capa de neuronas que mira `nIn` entradas (sin capa oculta; `NetworkN([nIn, nOut])`), con sitio a la izquierda para
+ * escribir el nombre de cada entrada y a la derecha el de cada salida. Todas las entradas llegan a TODAS las neuronas (nIn·nOut
+ * conexiones); cada neurona tiene su axón corto y su terminal. Quien dibuja pone las palabras: `inputs` son las puntas de las
+ * entradas (el nombre va a su izquierda, alineado a la derecha) y cada `terminal` es donde va lo que dice cada neurona.
+ */
+export function inputsOutputsLayout(nIn: number, nOut: number, o: { labelW?: number; span?: number; rightW?: number; h?: number; extraRows?: number } = {}): { layout: NetworkLayout; inputs: Pt[] } {
+  const { labelW = 165, span = 150, rightW = 100, h: H = 250, extraRows = 0 } = o;
+  const bodyX = labelW + span, r = Math.max(14, Math.min(26, (H / (nOut + 1)) * 0.3));
+  const W = bodyX + r + 34 + 9 + rightW, size = { w: W, h: H };
+  const ys = (n: number): number[] => Array.from({ length: n }, (_, i) => (H * (i + 1)) / (n + 1));
+  /* `extraRows`: huecos libres al final de la columna de entradas (p. ej. para una leyenda), con el mismo paso entre filas */
+  const inputs = ys(nIn + extraRows).slice(0, nIn).map((y) => [labelW, y] as Pt);
+  const neurons = ys(nOut).map((y): NeuronGeometry => {
+    const g = fanGeometry({ x: bodyX, y, r }, inputs, size, true);
+    const axon: Pt[] = [[bodyX + r * 0.9, y], [bodyX + r * 0.9 + 34, y]];
+    g.axon = axon; g.terminal = [axon[1][0] + 9, y];
+    return g;
+  });
+  return { layout: { size, neurons: [neurons] }, inputs };
+}

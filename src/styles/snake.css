@@ -1,6 +1,92 @@
-/* 3 snake */
-.frame{margin-top:26px;width:min(100%,560px);aspect-ratio:2/1;border:1px solid var(--line);border-radius:18px;padding:10px;
-  background:linear-gradient(160deg,#ffffff0a,#ffffff02);box-shadow:0 30px 80px -30px #000,0 0 60px -20px #c9a22733 inset}
-.frame canvas{width:100%;height:100%;display:block;border-radius:10px}
-.soon{margin-top:18px;display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;color:var(--cool);padding:7px 14px;border:1px solid #6aa7ff44;border-radius:999px;background:#6aa7ff10}
-.soon i{width:6px;height:6px;border-radius:50%;background:var(--cool);box-shadow:0 0 8px var(--cool);animation:beat 1.6s infinite}
+/* Snake (Nivel 1: aprender con premios): el tablero, lo que la red cree que vale cada jugada, las comidas de cada partida.
+   Reutiliza el diseño de Paleta (columnas, botones, dock) y añade las barras de ValueBars. */
+.elab.pal.sn{grid-template-columns:252px minmax(0,1.15fr) minmax(0,1fr)}
+.sn .snplay{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px;align-items:center;flex:1 1 0;min-height:0}
+.sn #snboard{display:block;width:100%;height:auto;aspect-ratio:1/1;max-height:100%;margin:0 auto}
+.sn .snstats{flex-direction:row;align-items:center;justify-content:flex-start;gap:12px;text-align:left}
+.sn .snstat{flex:1 1 0;min-width:0}
+.sn .snstat .pcount{margin:0 0 5px}
+.sn .sncurve{display:block;width:100%;height:78px}
+/* marcador: comidas de esta partida y récord */
+.sn .snscore{display:flex;justify-content:space-between;gap:10px;margin:0 0 8px;font-family:var(--mono);font-size:12px;color:var(--mute);text-align:left}
+.sn .snscore b{color:var(--fg);font-weight:700;margin-left:4px;font-variant-numeric:tabular-nums}
+.sn .snscore span:last-child b{color:var(--gold-hi)}
+.sn .snrec{font-style:normal;color:var(--cool)}
+/* Nivel 2: el interruptor «Lo que ve», lo que calcula una persona (azul) y la frase de lo que cambia */
+.sn .sntog{margin-top:6px}
+.sn .sntog .qstep[aria-pressed="true"]{border-color:#6aa7ffaa;background:#6aa7ff14;color:var(--cool)}
+.sn .snscore #snenc b{color:#6aa7ff}
+/* Guardado: el panel del disquete (a la izquierda del cerebro) */
+.sbtn{right:84px}
+.spanel{font-size:12.5px}
+.sbox{padding:12px 14px;text-align:left}
+.sbox .bhead{margin:0 0 4px;padding:0}
+.sbox .bnote{margin:0;padding:0;font-size:12px;line-height:1.4}
+.sbox .sstat{margin:6px 0;min-height:2.6em;font-family:var(--mono);font-size:11.5px;line-height:1.35;color:var(--cool)}
+.srow{display:flex;flex-wrap:wrap;gap:6px}
+.srow .qstep{padding:6px 10px;font-size:12px}
+.slist{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px}
+.sslot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 10px;padding:5px 8px;border:1px solid var(--line);border-radius:9px;font-size:12px}
+.sname{color:var(--fg)}
+.sbtns{display:flex;gap:10px}
+.slink{white-space:nowrap;background:none;border:0;padding:2px 0;color:var(--cool);font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.slink.sdel{color:#ff8a78}
+.sempty{color:var(--mute);font-size:12px}
+.stext{position:relative;margin-top:8px;border:1px solid var(--line);border-radius:9px;max-height:200px;overflow:auto}
+.stext .ccode{font-size:10.5px;line-height:1.45;padding:8px 10px}
+/* ValueBars: una fila por opción, el nombre y el número arriba y la barra debajo */
+.vbars{display:grid;gap:7px;min-width:0;align-content:center;text-align:left}
+.vbtitle{margin:0 0 1px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.vbrow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"l d v" "t t t";column-gap:6px;row-gap:3px;align-items:center;padding:4px 7px 5px;border:1px solid transparent;border-radius:9px;font-family:var(--mono);font-size:11.5px;color:var(--mute);transition:border-color .3s,background .3s}
+.vbl{grid-area:l;color:rgb(var(--c));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vbl b{display:inline-block;width:1.35em;font-weight:700}
+.vbt{grid-area:t;position:relative;height:10px;border-radius:5px;background:#ffffff0a;box-shadow:inset 0 0 0 1px #ffffff14;overflow:hidden}
+.vbz{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#ffffff40}
+.vbb{position:absolute;top:1px;bottom:1px;left:50%;width:0;border-radius:4px;background:rgba(var(--c),.88);box-shadow:0 0 9px rgba(var(--c),.45);transition:left .35s var(--ease),width .35s var(--ease)}
+.vbrow.neg .vbb{background:repeating-linear-gradient(90deg,rgba(var(--c),.85) 0 5px,rgba(var(--c),.25) 5px 9px)}
+.vbv{grid-area:v;color:var(--fg);text-align:right;white-space:nowrap}
+.vbdie{grid-area:d;display:none;width:15px;height:15px;color:#c896ff}
+.vbrow.best:not(.chosen){border-color:#ffffff26;border-style:dashed}
+.vbrow.chosen{border-color:#c9a22799;background:#c9a2270f}
+.vbrow.chosen.rnd{border-color:#c896ff99;background:#c896ff14}
+.vbrow.rnd .vbdie{display:block}
+.vbnote{margin:2px 0 0;min-height:2.6em;font-size:12px;line-height:1.3;color:var(--cool)}
+#snbpanel .brow{grid-template-columns:112px minmax(0,1fr) 100px}
+@media (prefers-reduced-motion:reduce){.vbb,.vbrow{transition:none}}
+@media (max-width:899px){
+  /* Todo lo interactivo cabe sin desplazarse (375×812): iconos → tablero y barras → cerebro y comidas → red → lanzar → modo → estado. */
+  #snake{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+  #snake .ehead .eyebrow{font-size:10px;line-height:1.2}
+  #snake .ehead h2{font-size:24px;margin-top:2px;line-height:1.15}
+  #snake .ehead .sub{font-size:13px;line-height:1.3;margin-top:3px}
+  #snake .elab.sn{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;max-width:640px}
+  #snake .elab>div,#snake .pmore{display:contents}
+  #snake .elab>div>*{flex:0 0 100%;min-width:0}
+  #snake .sntog{margin:0}
+  #snake .sntog .ptxt{display:none}
+  #snake .sntog .qstep{order:0;padding:6px 8px;font-size:12.5px}
+  #snake .ecode{order:1;height:34px;margin:0}
+  #snake .snscore{order:2;flex:0 0 100%;margin:0;font-size:11px}
+  #snake .snplay{order:2;gap:10px;flex:0 0 100%;align-items:center;grid-template-columns:128px minmax(0,1fr)}
+  #snake .snplay .vbars{gap:3px}
+  #snake .vbtitle{font-size:9px;margin:0}
+  #snake .vbrow{padding:2px 6px 3px;font-size:11px;row-gap:2px}
+  #snake .vbt{height:8px}
+  #snake .vbnote{margin:0;min-height:2.4em;font-size:11px;line-height:1.2}
+  #snake .snstats{order:3;margin:0;gap:8px}
+  #snake .pmeter{width:76px;height:57px}
+  #snake .sncurve{height:44px}
+  #snake .snstat .pcount{margin:0 0 3px;font-size:11px;white-space:nowrap;letter-spacing:-.02em}
+  #snake .emid>canvas{order:4;flex:none;height:160px;min-height:0}
+  #snake .pbr{display:block;flex:0 0 100%;height:0;order:6;margin:0}
+  #snake #sngo{order:5;flex:1 1 0;width:auto;margin:0;padding:10px 8px;font-size:14px}
+  #snake #sn10,#snake #sn100{order:5;flex:0 0 auto;width:auto;margin:0;padding:10px 11px;font-size:13px}
+  #snake #snauto{order:7;display:block;flex:1 1 0;width:auto;margin:0;padding:9px 6px;font-size:12.5px;line-height:1.1;white-space:nowrap}
+  #snake .elab>div>#snreset{order:7;flex:0 0 auto;margin:0}
+  #snake .elab>div>.estatus{order:9;flex:1 1 100%;min-width:0;margin:0;text-align:left;font-size:12px;line-height:1.25;min-height:0}
+  #snake .nautocap{order:9;flex:1 1 100%;margin:0;padding:3px 9px;font-size:12px;line-height:1.25;text-align:left}
+  #snake[data-cap="1"] .estatus{display:none}
+  #snake .eleg,#snake .enote{display:none}
+}
+@media (min-width:900px){#snake{padding-bottom:56px}}
+@media (min-width:900px) and (max-height:900px){.sn .enote{display:none}}
