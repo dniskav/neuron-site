@@ -13,8 +13,12 @@ const stripRef = () => ({
   },
 });
 
+/** Producción: neuron.dniskav.com (raíz). Vista previa en GitHub Pages: dniskav.github.io/neuron-site (el workflow pone GITHUB_PAGES=true). */
+const pages = process.env.GITHUB_PAGES === 'true';
+
 export default defineConfig({
-  site: 'https://neuron.dniskav.com',
+  site: pages ? 'https://dniskav.github.io' : 'https://neuron.dniskav.com',
+  base: pages ? '/neuron-site' : '/',
   output: 'static',
   integrations: [sitemap(), stripRef()],
   i18n: {
